@@ -1,0 +1,21 @@
+name: Task
+description: 일반 작업 템플릿
+labels: [task]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: 작업 요약
+    validations:
+      required: true
+  - type: textarea
+    id: checklist
+    attributes:
+      label: 체크리스트
+      placeholder: |
+        - [ ] step 1
+        - [ ] step 2
+  - type: textarea
+    id: references
+    attributes:
+      label: 참고 문서/링크

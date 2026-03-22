@@ -2,8 +2,11 @@
 
 ## 브랜치
 
-- 기능: `feature/<scope>-<short-name>`
-- 버그: `fix/<scope>-<short-name>`
+- 기본 흐름: `main`(배포) / `dev`(통합 개발)
+- 기능: `feature/<scope>-<short-name>` (`dev`에서 분기)
+- 버그: `fix/<scope>-<short-name>` (`dev`에서 분기)
+- 문서: `docs/<scope>-<short-name>` (`dev`에서 분기)
+- 긴급배포: `hotfix/<scope>-<short-name>` (`main`에서 분기)
 
 ## 커밋
 

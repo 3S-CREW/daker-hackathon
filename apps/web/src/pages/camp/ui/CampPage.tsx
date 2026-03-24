@@ -1,5 +1,7 @@
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchTeams, type Team } from "@/shared/api/queries"
+import { CreateTeamModal } from "@/features/create-team"
 
 function TeamCard({ team }: { team: Team }) {
   return (
@@ -12,11 +14,11 @@ function TeamCard({ team }: { team: Team }) {
           </span>
         )}
       </div>
-      
+
       <p className="text-[#595c5e] text-[15px] leading-relaxed mb-8 flex-1">
         {team.intro}
       </p>
-      
+
       <div className="flex items-center gap-4 mb-8">
         <div className="flex items-center gap-2 text-[#595c5e] font-semibold text-sm">
           <svg className="w-5 h-5 text-[#9a9d9f]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -33,19 +35,37 @@ function TeamCard({ team }: { team: Team }) {
           ))}
         </div>
       </div>
-      
-      <button className="w-full py-4 text-[#0064ff] font-bold rounded-full bg-[#f5f7f9] hover:bg-[#eef1f3] transition-colors relative active:scale-[0.98]">
-        지원하기
-      </button>
+
+      {team.contact_url ? (
+        <a
+          href={team.contact_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full py-4 text-center text-[#0064ff] font-bold rounded-full bg-[#f5f7f9] hover:bg-[#eef1f3] transition-colors"
+        >
+          지원하기
+        </a>
+      ) : (
+        <button className="w-full py-4 text-[#0064ff] font-bold rounded-full bg-[#f5f7f9] hover:bg-[#eef1f3] transition-colors">
+          지원하기
+        </button>
+      )}
     </div>
   )
 }
 
 export function CampPage() {
-  const { data: teams, isLoading } = useQuery({
+  const [filter, setFilter] = useState<'all' | 'recruiting'>('all')
+  const [modalOpen, setModalOpen] = useState(false)
+
+  const { data: teams = [], isLoading } = useQuery({
     queryKey: ['teams'],
     queryFn: fetchTeams
   })
+
+  const filteredTeams = filter === 'recruiting'
+    ? teams.filter((t) => t.recruiting)
+    : teams
 
   return (
     <div className="pb-24 relative">
@@ -56,19 +76,23 @@ export function CampPage() {
         <p className="text-[#595c5e] text-lg">새로운 도전을 함께할 최고의 팀 빌딩 캠프</p>
       </div>
 
-      {/* Filter / Search Bar */}
+      {/* 필터 */}
       <div className="flex gap-4 mb-10 overflow-x-auto pb-4 custom-scrollbar">
-        <button className="whitespace-nowrap px-6 py-3 rounded-full font-bold text-white bg-[#2c2f31] shadow-md">
+        <button
+          onClick={() => setFilter('all')}
+          className={`whitespace-nowrap px-6 py-3 rounded-full font-bold shadow-md transition-colors ${
+            filter === 'all' ? 'text-white bg-[#2c2f31]' : 'text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]'
+          }`}
+        >
           전체 보기
         </button>
-        <button className="whitespace-nowrap px-6 py-3 rounded-full font-bold text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9] transition-colors">
+        <button
+          onClick={() => setFilter('recruiting')}
+          className={`whitespace-nowrap px-6 py-3 rounded-full font-bold transition-colors ${
+            filter === 'recruiting' ? 'text-white bg-[#0064ff]' : 'text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]'
+          }`}
+        >
           모집 중만 보기
-        </button>
-        <button className="whitespace-nowrap px-6 py-3 rounded-full font-bold text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9] transition-colors">
-          프론트엔드 구함
-        </button>
-        <button className="whitespace-nowrap px-6 py-3 rounded-full font-bold text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9] transition-colors">
-          디자이너 구함
         </button>
       </div>
 
@@ -78,23 +102,36 @@ export function CampPage() {
             <div key={i} className="h-80 bg-white rounded-[2rem] animate-pulse border border-slate-100" style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }} />
           ))}
         </div>
+      ) : filteredTeams.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="text-xl font-bold text-[#2c2f31] mb-2">팀이 없습니다</p>
+          <p className="text-[#595c5e]">첫 번째 팀을 만들어보세요!</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {teams?.map(team => (
+          {filteredTeams.map(team => (
             <TeamCard key={team.id} team={team} />
           ))}
         </div>
       )}
 
-      {/* Floating Action Button */}
-      <div className="fixed bottom-10 right-10 z-50">
-        <button className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg px-8 py-5 rounded-full hover:scale-[1.05] transition-transform active:scale-95 flex items-center gap-3">
+      {/* FAB - 새로운 팀 만들기 */}
+      <div className="fixed bottom-10 right-10 z-40">
+        <button
+          onClick={() => setModalOpen(true)}
+          className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg px-8 py-5 rounded-full hover:scale-[1.05] transition-transform active:scale-95 flex items-center gap-3"
+        >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
           </svg>
           새로운 팀 만들기
         </button>
       </div>
+
+      <CreateTeamModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
-  ) 
+  )
 }

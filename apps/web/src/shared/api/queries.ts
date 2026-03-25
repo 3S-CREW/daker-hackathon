@@ -134,6 +134,104 @@ export const fetchRankingsByHackathon = async (hackathon_id: string): Promise<Ra
   })) as RankingEntry[]
 }
 
+// ---- HackathonDetails ----
+
+export type HackathonDetails = {
+  hackathon_id: string
+  overview_json: Record<string, unknown> | null
+  info_json: Record<string, unknown> | null
+  eval_json: Record<string, unknown> | null
+  schedule_json: Record<string, unknown> | null
+  prize_json: Record<string, unknown> | null
+  submit_json: Record<string, unknown> | null
+}
+
+export const fetchHackathonDetails = async (hackathon_id: string): Promise<HackathonDetails | null> => {
+  const { data, error } = await supabase
+    .from('hackathon_details')
+    .select('*')
+    .eq('hackathon_id', hackathon_id)
+    .single()
+  if (error) return null
+  return data as HackathonDetails
+}
+
+// ---- DashboardRecord ----
+
+export type DashboardRecord = {
+  id: string
+  user_id: string
+  hackathon_id: string
+  memo: string | null
+  outcome_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export type CreateDashboardRecordInput = {
+  user_id: string
+  hackathon_id: string
+  memo?: string
+  outcome_json?: Record<string, unknown>
+}
+
+export const fetchMyDashboardRecords = async (user_id: string): Promise<DashboardRecord[]> => {
+  const { data, error } = await supabase
+    .from('dashboard_records')
+    .select('*, hackathons(title, slug, status)')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('Fetch DashboardRecords Error:', error)
+    return []
+  }
+  return data as DashboardRecord[]
+}
+
+export const upsertDashboardRecord = async (input: CreateDashboardRecordInput): Promise<void> => {
+  const { error } = await supabase
+    .from('dashboard_records')
+    .upsert(input, { onConflict: 'user_id,hackathon_id' })
+  if (error) throw error
+}
+
+// ---- Certificate ----
+
+export type Certificate = {
+  id: string
+  user_id: string
+  hackathon_id: string
+  file_url: string | null
+  metadata_json: Record<string, unknown> | null
+  created_at: string
+}
+
+export type CreateCertificateInput = {
+  user_id: string
+  hackathon_id: string
+  file_url?: string
+  metadata_json?: Record<string, unknown>
+}
+
+export const fetchMyCertificates = async (user_id: string): Promise<Certificate[]> => {
+  const { data, error } = await supabase
+    .from('certificates')
+    .select('*, hackathons(title, slug)')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('Fetch Certificates Error:', error)
+    return []
+  }
+  return data as Certificate[]
+}
+
+export const createCertificate = async (input: CreateCertificateInput): Promise<void> => {
+  const { error } = await supabase.from('certificates').insert(input)
+  if (error) throw error
+}
+
+// ---- Rankings ----
+
 export const fetchRankings = async (hackathon_id?: string): Promise<RankingEntry[]> => {
   let query = supabase
     .from('leaderboard')

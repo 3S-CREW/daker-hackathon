@@ -134,6 +134,21 @@ export const fetchRankingsByHackathon = async (hackathon_id: string): Promise<Ra
   })) as RankingEntry[]
 }
 
+// ---- My Teams (참가 이력용) ----
+
+export const fetchMyTeams = async (user_id: string): Promise<(Team & { hackathons: { title: string; slug: string; status: string } | null })[]> => {
+  const { data, error } = await supabase
+    .from('teams')
+    .select('*, hackathons(title, slug, status)')
+    .eq('created_by', user_id)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error('Fetch MyTeams Error:', error)
+    return []
+  }
+  return data as (Team & { hackathons: { title: string; slug: string; status: string } | null })[]
+}
+
 // ---- HackathonDetails ----
 
 export type HackathonDetails = {

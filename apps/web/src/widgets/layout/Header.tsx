@@ -31,7 +31,7 @@ export function Header() {
           {!isLoading && (
             user ? (
               <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-[#2c2f31]">{user.user_metadata?.user_name || user.email}</span>
+                <Link to="/dashboard" className="text-sm font-semibold text-[#2c2f31] hover:text-[#0064ff] transition-colors">{user.user_metadata?.user_name || user.email}</Link>
                 <button onClick={handleLogout} className="px-4 py-2 text-sm font-bold text-[#595c5e] bg-slate-100 hover:bg-slate-200 rounded-full transition-colors active:scale-95">로그아웃</button>
               </div>
             ) : (

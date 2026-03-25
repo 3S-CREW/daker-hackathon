@@ -6,13 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { message, hackathonId } = await req.json()
+    const { message, hackathonId, history = [] } = await req.json() as {
+      message: string
+      hackathonId?: string
+      history?: ChatMessage[]
+    }
 
     if (!message || typeof message !== 'string') {
       return new Response(
@@ -27,18 +36,24 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    // 해커톤 컨텍스트 조회
+    // 해커톤 기본 정보 + hackathon_details 조회
     let hackathonContext = ''
     if (hackathonId) {
-      const { data: hackathon } = await supabase
-        .from('hackathons')
-        .select('title, description, status, team_size, total_prize, submission_deadline_at, end_at, tags')
-        .eq('id', hackathonId)
-        .single()
+      const [{ data: hackathon }, { data: details }] = await Promise.all([
+        supabase
+          .from('hackathons')
+          .select('title, description, status, team_size, total_prize, submission_deadline_at, end_at, tags')
+          .eq('id', hackathonId)
+          .single(),
+        supabase
+          .from('hackathon_details')
+          .select('info_json, eval_json, schedule_json, submit_json')
+          .eq('hackathon_id', hackathonId)
+          .single(),
+      ])
 
       if (hackathon) {
-        hackathonContext = `
-현재 해커톤 정보:
+        hackathonContext = `현재 해커톤 정보:
 - 이름: ${hackathon.title}
 - 상태: ${hackathon.status}
 - 팀 규모: ${hackathon.team_size}
@@ -46,11 +61,24 @@ serve(async (req) => {
 - 제출 마감: ${hackathon.submission_deadline_at}
 - 대회 종료: ${hackathon.end_at}
 - 태그: ${hackathon.tags?.join(', ')}
-- 소개: ${hackathon.description}
-`
+- 소개: ${hackathon.description}`
+      }
+
+      if (details) {
+        if (details.info_json) {
+          hackathonContext += `\n\n공지/규칙 정보:\n${JSON.stringify(details.info_json, null, 2)}`
+        }
+        if (details.eval_json) {
+          hackathonContext += `\n\n평가 기준:\n${JSON.stringify(details.eval_json, null, 2)}`
+        }
+        if (details.schedule_json) {
+          hackathonContext += `\n\n일정 상세:\n${JSON.stringify(details.schedule_json, null, 2)}`
+        }
+        if (details.submit_json) {
+          hackathonContext += `\n\n제출 가이드:\n${JSON.stringify(details.submit_json, null, 2)}`
+        }
       }
     } else {
-      // 전체 해커톤 목록 조회
       const { data: hackathons } = await supabase
         .from('hackathons')
         .select('title, status, total_prize, submission_deadline_at')
@@ -73,8 +101,11 @@ ${hackathonContext}
 답변 규칙:
 - 한국어로 답변합니다
 - 간결하고 명확하게 답변합니다 (3~5문장 이내)
-- 모르는 정보는 솔직하게 모른다고 답변합니다
-- 플랫폼 기능(팀 만들기, 대회 제출, 랭킹 확인)에 대한 안내도 제공합니다`
+- 모르는 정보는 솔직하게 모른다고 답변하고, 대회 페이지를 직접 확인하도록 안내합니다
+- 플랫폼 기능(팀 만들기, 대회 제출, 랭킹 확인, 포트폴리오 빌더)에 대한 안내도 제공합니다`
+
+    // 최근 8턴까지만 히스토리 전달 (토큰 절약)
+    const recentHistory = history.slice(-8)
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -86,6 +117,7 @@ ${hackathonContext}
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
+          ...recentHistory,
           { role: 'user', content: message },
         ],
         max_tokens: 500,
@@ -94,8 +126,7 @@ ${hackathonContext}
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('OpenAI error:', error)
+      console.error('OpenAI error:', await response.text())
       return new Response(
         JSON.stringify({ error: 'AI 서비스 오류가 발생했습니다.' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

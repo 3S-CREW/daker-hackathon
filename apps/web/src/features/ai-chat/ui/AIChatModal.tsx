@@ -13,9 +13,8 @@ interface AIChatModalProps {
 }
 
 export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: '안녕하세요! Daker Hackathon AI 도우미입니다. 대회 규칙, 팀 구성, 제출 방법 등 무엇이든 질문해 주세요.' }
-  ])
+  const INITIAL_MESSAGE: Message = { role: 'assistant', content: '안녕하세요! Daker Hackathon AI 도우미입니다. 대회 규칙, 팀 구성, 제출 방법 등 무엇이든 질문해 주세요.' }
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -41,8 +40,11 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
     setIsLoading(true)
 
     try {
+      // 현재 메시지 제외한 이전 대화 히스토리 전달 (최근 8턴)
+      const history = messages.slice(1).slice(-8)
+
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { message: trimmed, hackathonId },
+        body: { message: trimmed, hackathonId, history },
       })
 
       if (error) throw error
@@ -93,12 +95,21 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
               <p className="text-xs font-semibold text-[#9a9d9f]">해커톤 Q&A</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] font-bold text-lg"
-          >
-            x
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setMessages([INITIAL_MESSAGE])}
+              title="대화 초기화"
+              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] text-xs font-bold"
+            >
+              reset
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] font-bold text-lg"
+            >
+              x
+            </button>
+          </div>
         </div>
 
         {/* Messages */}

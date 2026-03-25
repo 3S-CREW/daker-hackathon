@@ -8,6 +8,7 @@ const HackathonListPage = lazy(() => import("@/pages/hackathons/ui/HackathonList
 const HackathonDetailPage = lazy(() => import("@/pages/hackathons-detail/ui/HackathonDetailPage").then((m) => ({ default: m.HackathonDetailPage })))
 const CampPage = lazy(() => import("@/pages/camp/ui/CampPage").then((m) => ({ default: m.CampPage })))
 const RankingsPage = lazy(() => import("@/pages/rankings/ui/RankingsPage").then((m) => ({ default: m.RankingsPage })))
+const PortfolioPage = lazy(() => import("@/pages/portfolio/ui/PortfolioPage").then((m) => ({ default: m.PortfolioPage })))
 
 function PageFallback() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="hackathons/:slug" element={<Suspense fallback={<PageFallback />}><HackathonDetailPage /></Suspense>} />
             <Route path="camp" element={<Suspense fallback={<PageFallback />}><CampPage /></Suspense>} />
             <Route path="rankings" element={<Suspense fallback={<PageFallback />}><RankingsPage /></Suspense>} />
+            <Route path="portfolio" element={<Suspense fallback={<PageFallback />}><PortfolioPage /></Suspense>} />
           </Route>
         </Routes>
       </BrowserRouter>

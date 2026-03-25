@@ -24,6 +24,7 @@ export function Header() {
           <Link to="/hackathons" className="hover:text-[#0064ff] transition-colors">Hackathons</Link>
           <Link to="/camp" className="hover:text-[#0064ff] transition-colors">Camp</Link>
           <Link to="/rankings" className="hover:text-[#0064ff] transition-colors">Rankings</Link>
+          <Link to="/portfolio" className="hover:text-[#0064ff] transition-colors">Portfolio</Link>
           
           <div className="w-[1px] h-4 bg-slate-200 mx-2" />
           

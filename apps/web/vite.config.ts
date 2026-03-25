@@ -18,6 +18,7 @@ export default defineConfig({
           'query': ['@tanstack/react-query'],
           'form': ['react-hook-form', '@hookform/resolvers', 'zod'],
           'supabase': ['@supabase/supabase-js'],
+          'charts': ['recharts'],
         },
       },
     },

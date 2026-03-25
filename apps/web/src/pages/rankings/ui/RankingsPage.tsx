@@ -1,6 +1,10 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from "recharts"
 import { fetchRankings, fetchHackathons } from "@/shared/api/queries"
 import { useAuthStore } from "@/shared/store/authStore"
 
@@ -99,6 +103,74 @@ export function RankingsPage() {
           </div>
         )}
       </div>
+
+      {/* 시각화 차트 */}
+      {!isLoading && rankings.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          {/* 순위 막대 차트 */}
+          <div className="lg:col-span-2 bg-white rounded-[2rem] p-8"
+            style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }}>
+            <h3 className="text-lg font-extrabold text-[#2c2f31] mb-6">Top {Math.min(rankings.length, 8)} 팀 점수</h3>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={rankings.slice(0, 8)} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f5f7f9" />
+                <XAxis
+                  dataKey="team_name"
+                  tick={{ fontSize: 11, fontWeight: 700, fill: '#9a9d9f' }}
+                  tickFormatter={(v: string) => v.length > 6 ? v.slice(0, 6) + '…' : v}
+                />
+                <YAxis tick={{ fontSize: 11, fontWeight: 700, fill: '#9a9d9f' }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 8px 30px rgba(0,81,210,0.1)', fontWeight: 700 }}
+                  formatter={(value: number) => [`${value}점`, '점수']}
+                />
+                <Bar dataKey="total_score" radius={[8, 8, 0, 0]}>
+                  {rankings.slice(0, 8).map((_, i) => (
+                    <Cell
+                      key={i}
+                      fill={i === 0 ? '#0064ff' : i === 1 ? '#7a9dff' : i === 2 ? '#a8c0ff' : '#eef1f3'}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* 점수 구성 도넛 차트 */}
+          <div className="bg-white rounded-[2rem] p-8"
+            style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }}>
+            <h3 className="text-lg font-extrabold text-[#2c2f31] mb-6">점수 구성</h3>
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: '심사위원', value: 70 },
+                    { name: '참가자 투표', value: 30 },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={75}
+                  paddingAngle={4}
+                  dataKey="value"
+                >
+                  <Cell fill="#0064ff" />
+                  <Cell fill="#a8c0ff" />
+                </Pie>
+                <Legend
+                  iconType="circle"
+                  formatter={(value) => <span style={{ fontWeight: 700, fontSize: 12, color: '#595c5e' }}>{value}</span>}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 8px 30px rgba(0,81,210,0.1)', fontWeight: 700 }}
+                  formatter={(value: number) => [`${value}%`, '']}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <p className="text-xs font-semibold text-[#9a9d9f] text-center mt-2">기본 배점 기준</p>
+          </div>
+        </div>
+      )}
 
       {/* 랭킹 목록 */}
       <h3 className="text-2xl font-extrabold mb-6 text-[#2c2f31]">

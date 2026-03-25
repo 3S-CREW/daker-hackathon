@@ -45,6 +45,7 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
 
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { message: trimmed, hackathonId, history },
+        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
       })
 
       if (error) throw error

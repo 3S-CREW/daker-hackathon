@@ -11,7 +11,14 @@ serve(async (req) => {
   }
 
   try {
-    const { username } = await req.json()
+    const text = await req.text()
+    if (!text) {
+      return new Response(
+        JSON.stringify({ error: 'Empty body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const { username } = JSON.parse(text)
 
     if (!username || typeof username !== 'string') {
       return new Response(

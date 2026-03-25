@@ -23,6 +23,7 @@ export function PortfolioPage() {
     try {
       const { data, error: fnError } = await supabase.functions.invoke('portfolio', {
         body: { username: trimmed },
+        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
       })
 
       if (fnError || data?.error) {

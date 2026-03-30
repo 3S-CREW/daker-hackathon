@@ -1,7 +1,8 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { fetchHackathonBySlug, fetchTeamsByHackathon, fetchRankingsByHackathon, type Team, type RankingEntry } from "@/shared/api/queries"
+import { AIChatModal } from "@/features/ai-chat"
+import { fetchHackathonBySlug, fetchTeamsByHackathon, fetchRankingsByHackathon, fetchHackathonDetails, type Team, type RankingEntry } from "@/shared/api/queries"
 import { SubmitForm } from "@/features/submit-hackathon"
 import { CreateTeamModal } from "@/features/create-team"
 
@@ -182,6 +183,19 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
   )
 }
 
+function DetailContentTab({ title, content }: { title: string; content?: any }) {
+  if (!content) return <ComingSoonTab tab={title} />
+
+  return (
+    <div>
+      <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">{title}</h3>
+      <div className="text-[#595c5e] leading-relaxed text-lg whitespace-pre-wrap">
+        {typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
+      </div>
+    </div>
+  )
+}
+
 function ComingSoonTab({ tab }: { tab: string }) {
   return (
     <div className="text-center py-20">
@@ -196,13 +210,20 @@ function ComingSoonTab({ tab }: { tab: string }) {
 export function HackathonDetailPage() {
   const { slug } = useParams<{ slug: string }>()
   const [activeTab, setActiveTab] = useState<Tab>('Overview')
+  const [chatOpen, setChatOpen] = useState(false)
 
-  const { data: hackathon, isLoading } = useQuery({
+  const { data: hackathon, isLoading: isHackathonLoading } = useQuery({
     queryKey: ['hackathon', slug],
     queryFn: () => fetchHackathonBySlug(slug!),
   })
 
-  if (isLoading) return <div className="animate-pulse h-[600px] w-full bg-white rounded-[3rem]" />
+  const { data: details, isLoading: isDetailsLoading } = useQuery({
+    queryKey: ['hackathonDetails', hackathon?.id],
+    queryFn: () => fetchHackathonDetails(hackathon!.id),
+    enabled: !!hackathon?.id,
+  })
+
+  if (isHackathonLoading) return <div className="animate-pulse h-[600px] w-full bg-white rounded-[3rem]" />
   if (!hackathon) return <div className="text-center py-20 text-2xl font-bold">Hackathon not found</div>
 
   const isUpcoming = hackathon.status === 'upcoming'
@@ -280,10 +301,15 @@ export function HackathonDetailPage() {
           <div>
             <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">대회 소개</h3>
             <p className="text-[#595c5e] leading-relaxed text-lg">{hackathon.description}</p>
+            {details?.overview_json && (
+              <div className="mt-8 pt-8 border-t border-slate-100">
+                <DetailContentTab title="추가 개요" content={details.overview_json} />
+              </div>
+            )}
           </div>
         )}
-        {activeTab === 'Info' && <ComingSoonTab tab="Info" />}
-        {activeTab === 'Eval' && <ComingSoonTab tab="Eval" />}
+        {activeTab === 'Info' && <DetailContentTab title="공지/규칙" content={details?.info_json} />}
+        {activeTab === 'Eval' && <DetailContentTab title="평가 기준" content={details?.eval_json} />}
         {activeTab === 'Schedule' && (
           <ScheduleTab
             deadline={hackathon.submission_deadline_at}
@@ -317,6 +343,21 @@ export function HackathonDetailPage() {
           </button>
         </div>
       )}
+
+      {/* AI 챗봇 플로팅 버튼 */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-8 right-8 z-[60] w-14 h-14 rounded-full bg-gradient-to-br from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg shadow-[0_8px_30px_rgba(0,81,210,0.35)] hover:scale-110 active:scale-95 transition-transform flex items-center justify-center"
+        aria-label="AI 도우미 열기"
+      >
+        AI
+      </button>
+
+      <AIChatModal
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        hackathonId={hackathon.id}
+      />
     </div>
   )
 }

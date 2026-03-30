@@ -18,7 +18,7 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-    const { username } = JSON.parse(text)
+    const { username, theme = 'light' } = JSON.parse(text)
 
     if (!username || typeof username !== 'string') {
       return new Response(
@@ -61,6 +61,8 @@ serve(async (req) => {
 
     const prompt = `아래는 GitHub 유저 ${username}의 프로필 README입니다.
 이 내용을 분석하여 깔끔하고 현대적인 HTML 포트폴리오 페이지를 생성해 주세요.
+
+선택된 테마: ${theme} (light: 깔끔한 화이트, dark: 세련된 다크 모드, gradient: 화려한 그라데이션)
 
 요구사항:
 - 단일 HTML 파일 (인라인 CSS 포함, 외부 라이브러리 없음)

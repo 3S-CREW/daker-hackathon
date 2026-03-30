@@ -10,6 +10,7 @@ export function PortfolioPage() {
     user?.user_metadata?.user_name ?? ''
   )
   const [step, setStep] = useState<Step>('input')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'gradient'>('light')
   const [html, setHtml] = useState('')
   const [error, setError] = useState('')
 
@@ -22,7 +23,7 @@ export function PortfolioPage() {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('portfolio', {
-        body: { username: trimmed },
+        body: { username: trimmed, theme },
         headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
       })
 
@@ -91,16 +92,42 @@ export function PortfolioPage() {
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          {['torvalds', 'gaearon', 'tj'].map((name) => (
-            <button
-              key={name}
-              onClick={() => setUsername(name)}
-              className="px-4 py-2 text-sm font-bold text-[#595c5e] bg-[#f5f7f9] hover:bg-[#eef1f3] rounded-xl transition-colors"
-            >
-              {name}
-            </button>
-          ))}
+        <div className="mt-8">
+          <label className="block text-sm font-bold text-[#9a9d9f] uppercase tracking-wider mb-4">
+            테마 선택
+          </label>
+          <div className="flex gap-4">
+            {(['light', 'dark', 'gradient'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={`flex-1 py-4 rounded-2xl font-bold text-sm transition-all border-2 ${
+                  theme === t
+                    ? 'border-[#0064ff] bg-blue-50 text-[#0064ff]'
+                    : 'border-transparent bg-[#f5f7f9] text-[#595c5e] hover:bg-[#eef1f3]'
+                }`}
+              >
+                {t === 'light' ? 'Light' : t === 'dark' ? 'Dark' : 'Gradient'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 pt-8 border-t border-slate-100">
+          <label className="block text-sm font-bold text-[#9a9d9f] uppercase tracking-wider mb-4">
+            가이드 (샘플 클릭)
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {['torvalds', 'gaearon', 'tj'].map((name) => (
+              <button
+                key={name}
+                onClick={() => setUsername(name)}
+                className="px-4 py-2 text-sm font-bold text-[#595c5e] bg-[#f5f7f9] hover:bg-[#eef1f3] rounded-xl transition-colors"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

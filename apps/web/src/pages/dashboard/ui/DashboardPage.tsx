@@ -103,7 +103,7 @@ export function DashboardPage() {
             <p className="text-blue-200 text-sm mt-1">{user.email}</p>
           </div>
         </div>
-        <div className="relative z-10 flex gap-10 mt-8">
+        <div className="relative z-10 flex gap-8 md:gap-12 mt-8 flex-wrap">
           <div>
             <p className="text-blue-200 font-semibold text-xs uppercase tracking-wider mb-1">참가 대회</p>
             <p className="text-3xl font-extrabold">{myTeams.length}</p>
@@ -115,6 +115,24 @@ export function DashboardPage() {
           <div>
             <p className="text-blue-200 font-semibold text-xs uppercase tracking-wider mb-1">수료증</p>
             <p className="text-3xl font-extrabold">{certificates.length}</p>
+          </div>
+          <div className="ml-auto flex items-end">
+             <button 
+              onClick={() => {
+                const text = `Daker 해커톤 대시보드 - ${user.user_metadata?.user_name || user.email}\n참가 대회: ${myTeams.length}개\n회고 메모: ${records.length}개\n수료증: ${certificates.length}개`;
+                navigator.clipboard.writeText(text);
+                alert('대시보드 요약이 클립보드에 복사되었습니다!');
+              }}
+              className="px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl text-[13px] font-bold transition-all flex items-center gap-2"
+             >
+               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M10.5 4.08333C11.6506 4.08333 12.5833 3.15059 12.5833 2C12.5833 0.849407 11.6506 -0.0833333 10.5 -0.0833333C9.34941 -0.0833333 8.41667 0.849407 8.41667 2C8.41667 3.15059 9.34941 4.08333 10.5 4.08333Z" fill="white"/>
+                 <path d="M3.5 9.08333C4.65059 9.08333 5.58333 8.15059 5.58333 7C5.58333 5.84941 4.65059 4.91667 3.5 4.91667C2.34941 4.91667 1.41667 5.84941 1.41667 7C1.41667 8.15059 2.34941 9.08333 3.5 9.08333Z" fill="white"/>
+                 <path d="M10.5 14.0833C11.6506 14.0833 12.5833 13.1506 12.5833 12C12.5833 10.8494 11.6506 9.91667 10.5 9.91667C9.34941 9.91667 8.41667 10.8494 8.41667 12C8.41667 13.1506 9.34941 14.0833 10.5 14.0833Z" fill="white"/>
+                 <path d="M5.1975 7.97417L8.80833 10.0258M8.8025 3.9725L5.1975 6.0275" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+               </svg>
+               공유하기
+             </button>
           </div>
         </div>
       </div>

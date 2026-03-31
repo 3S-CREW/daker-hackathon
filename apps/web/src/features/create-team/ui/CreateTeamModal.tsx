@@ -35,7 +35,7 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateTeamFormValues>({
-    resolver: zodResolver(createTeamSchema),
+    resolver: zodResolver(createTeamSchema) as any,
     defaultValues: {
       recruiting: true,
       max_members: 4,
@@ -122,7 +122,19 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
         </div>
 
         {/* 폼 */}
-        <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="px-8 py-6 space-y-6">
+        <form onSubmit={handleSubmit((v: any) => mutation.mutate(v))} className="px-8 py-6 space-y-6">
+          
+          {/* 팀장 유의사항 안내 영역 */}
+          <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100">
+            <h4 className="flex items-center gap-2 text-[#0051d2] font-extrabold text-[15px] mb-3">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              팀장(개설자) 확인 사항
+            </h4>
+            <ul className="text-sm text-[#595c5e] font-semibold space-y-2 leading-relaxed tracking-tight">
+              <li className="flex gap-2"><span className="text-[#0064ff]">•</span> 팀 대표로서 대회 전반적인 팀원 관리 및 최종 결과물 등록의 책임을 집니다.</li>
+              <li className="flex gap-2"><span className="text-[#0064ff]">•</span> 팀 연락처 정보는 지원자가 언제든 열람할 수 있도록 퍼블릭 링크로 공개됩니다.</li>
+            </ul>
+          </div>
 
           {/* 해커톤 선택 (hackathonId 미전달 시만 표시) */}
           {!hackathonId && (

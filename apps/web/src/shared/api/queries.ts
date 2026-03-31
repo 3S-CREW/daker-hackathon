@@ -38,6 +38,31 @@ export type RankingEntry = {
   rank: number
   total_score: number
   team_name?: string
+  score_breakdown_json?: Record<string, any>
+}
+
+export type GlobalRankingEntry = {
+  user_id: string
+  name: string
+  avatar_url: string
+  github_login: string
+  global_total_score: number
+  participated_count: number
+  global_rank: number
+}
+
+export type DirectMessage = {
+  id: string
+  created_at: string
+  sender_id: string
+  receiver_id: string
+  content: string
+  read_at: string | null
+  sender?: {
+    name: string
+    avatar_url: string
+    github_login: string
+  }
 }
 
 export const fetchHackathons = async (): Promise<Hackathon[]> => {
@@ -86,6 +111,7 @@ export type CreateSubmissionInput = {
     project_url: string
     demo_url?: string
     description: string
+    memo?: string
   }
   created_by: string
 }
@@ -130,6 +156,7 @@ export const fetchRankingsByHackathon = async (hackathon_id: string): Promise<Ra
     team_id: entry.team_id,
     rank: index + 1,
     total_score: entry.total_score,
+    score_breakdown_json: entry.score_breakdown_json,
     team_name: entry.teams?.name || 'Unknown Team',
   })) as RankingEntry[]
 }
@@ -270,6 +297,46 @@ export const fetchRankings = async (hackathon_id?: string): Promise<RankingEntry
     team_id: entry.team_id,
     rank: index + 1,
     total_score: entry.total_score,
+    score_breakdown_json: entry.score_breakdown_json,
     team_name: entry.teams?.name || 'Unknown Team',
   })) as RankingEntry[]
+}
+
+// ---- Global Rankings ----
+export const fetchGlobalRankings = async (): Promise<GlobalRankingEntry[]> => {
+  const { data, error } = await supabase
+    .from('global_user_rankings')
+    .select('*')
+    .order('global_rank', { ascending: true })
+  
+  if (error) {
+    console.error('Fetch Global Rankings Error:', error)
+    return []
+  }
+  return data as GlobalRankingEntry[]
+}
+
+// ---- Direct Messages ----
+export const fetchDirectMessages = async (userId: string): Promise<DirectMessage[]> => {
+  const { data, error } = await supabase
+    .from('direct_messages')
+    .select('*, sender:profiles!direct_messages_sender_id_fkey(name, avatar_url, github_login)')
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Fetch DMs Error:', error)
+    return []
+  }
+
+  // To get user details, we manually join since wrapper users aren't fully exposed unless joined manually if needed.
+  // Wait, direct_messages references public.users. So we can do:
+  // .select('*, sender:users!direct_messages_sender_id_fkey(name, avatar_url, github_login), receiver:users!direct_messages_receiver_id_fkey(name, avatar_url, github_login)')
+  
+  return data as DirectMessage[]
+}
+
+export const sendDirectMessage = async (input: { sender_id: string; receiver_id: string; content: string }): Promise<void> => {
+  const { error } = await supabase.from('direct_messages').insert(input)
+  if (error) throw error
 }

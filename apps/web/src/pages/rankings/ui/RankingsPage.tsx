@@ -1,234 +1,203 @@
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
-} from "recharts"
-import { fetchRankings, fetchHackathons } from "@/shared/api/queries"
+import { fetchGlobalRankings } from "@/shared/api/queries"
 import { useAuthStore } from "@/shared/store/authStore"
 
 export function RankingsPage() {
-  const [selectedHackathonId, setSelectedHackathonId] = useState<string | null>(null)
   const { user } = useAuthStore()
 
-  const { data: hackathons = [] } = useQuery({
-    queryKey: ['hackathons'],
-    queryFn: fetchHackathons,
-  })
-
   const { data: rankings = [], isLoading } = useQuery({
-    queryKey: ['rankings', selectedHackathonId],
-    queryFn: () => fetchRankings(selectedHackathonId ?? undefined),
+    queryKey: ['global_rankings'],
+    queryFn: fetchGlobalRankings,
   })
 
   const myRanking = user
-    ? rankings.find((r) => r.team_id === user.id)
+    ? rankings.find((r) => r.user_id === user.id)
     : null
 
-  const rankColor = (rank: number) =>
-    rank === 1 ? 'text-[#e9b824]' : rank === 2 ? 'text-[#8792a1]' : rank === 3 ? 'text-[#cd7f32]' : 'text-[#9a9d9f]'
+  const getRankColor = (rank: number) => {
+    switch(rank) {
+      case 1: return 'text-[#e9b824] bg-[#fffcf3] border-[#fde8a1]'
+      case 2: return 'text-[#8792a1] bg-[#f5f7f9] border-[#e2e8f0]'
+      case 3: return 'text-[#cd7f32] bg-[#fff7ef] border-[#f5d0b5]'
+      default: return 'text-[#9a9d9f] bg-white border-slate-100'
+    }
+  }
+
+  const top3 = rankings.slice(0, 3)
+  const others = rankings.slice(3)
 
   return (
     <div className="pb-24">
-      <h1 className="text-4xl md:text-[3rem] font-extrabold tracking-tight mb-8 text-[#2c2f31] leading-tight">
-        현재 랭킹과 내 기록을<br />확인하세요
-      </h1>
-
-      {/* 해커톤 필터 */}
-      <div className="inline-flex bg-[#eef1f3] rounded-2xl p-1.5 mb-10 w-full sm:w-auto overflow-x-auto custom-scrollbar">
-        <button
-          onClick={() => setSelectedHackathonId(null)}
-          className={`flex-shrink-0 px-5 py-3 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap ${
-            selectedHackathonId === null
-              ? 'bg-white text-[#2c2f31] shadow-sm'
-              : 'text-[#9a9d9f] hover:text-[#595c5e]'
-          }`}
-        >
-          전체
-        </button>
-        {hackathons.map((h) => (
-          <button
-            key={h.id}
-            onClick={() => setSelectedHackathonId(h.id)}
-            className={`flex-shrink-0 px-5 py-3 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap ${
-              selectedHackathonId === h.id
-                ? 'bg-white text-[#2c2f31] shadow-sm'
-                : 'text-[#9a9d9f] hover:text-[#595c5e]'
-            }`}
-          >
-            {h.title.length > 20 ? h.title.slice(0, 20) + '…' : h.title}
-          </button>
-        ))}
+      <div className="text-center mb-16 mt-8">
+        <h1 className="text-4xl md:text-[3.5rem] font-extrabold tracking-tight mb-6 text-[#2c2f31] leading-tight">
+          명예의 전당
+        </h1>
+        <p className="text-xl text-[#595c5e] font-medium">유저별 누적 상금 및 글로벌 통합 랭킹</p>
       </div>
 
       {/* 개인 대시보드 카드 */}
-      <div className="bg-gradient-to-br from-[#0051d2] to-[#7a9dff] rounded-[2.5rem] p-10 md:p-12 text-white shadow-[0_20px_40px_rgba(0,100,255,0.15)] relative overflow-hidden mb-12">
-        <div className="absolute top-[-50px] right-[-50px] w-64 h-64 bg-white/10 rounded-full blur-3xl mix-blend-overlay" />
+      <div className="bg-gradient-to-br from-[#1a1c29] to-[#2c2f42] rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden mb-20 max-w-5xl mx-auto">
+        <div className="absolute top-[-100px] right-[-100px] w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] mix-blend-screen" />
+        <div className="absolute bottom-[-50px] left-[-50px] w-64 h-64 bg-purple-500/20 rounded-full blur-[80px] mix-blend-screen" />
 
         {user ? (
           <div className="flex flex-col md:flex-row gap-10 md:items-center justify-between relative z-10">
-            <div>
-              <p className="text-blue-100 font-semibold mb-2 text-lg">내 현재 순위</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold tracking-tight">
-                  {myRanking ? myRanking.rank : '-'}
-                </span>
-                <span className="text-2xl font-bold text-blue-200">위</span>
+            <div className="flex items-center gap-6">
+              <img 
+                src={user.user_metadata?.avatar_url || 'https://github.com/ghost.png'} 
+                alt="My Avatar" 
+                className="w-20 h-20 rounded-full object-cover border-4 border-white/10 shadow-xl"
+              />
+              <div>
+                <p className="text-blue-200 font-bold mb-1 text-sm tracking-wider uppercase">My Rank</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-5xl md:text-6xl font-extrabold tracking-tighter text-white">
+                    {myRanking ? myRanking.global_rank : '-'}
+                  </span>
+                  <span className="text-2xl font-bold text-blue-300">위</span>
+                </div>
               </div>
             </div>
 
-            <div className="hidden md:block w-[1px] h-20 bg-blue-300/30" />
+            <div className="hidden md:block w-[1px] h-20 bg-white/10" />
 
             <div>
-              <p className="text-blue-100 font-semibold mb-2 text-lg">내 총 점수</p>
+               <p className="text-blue-200 font-bold mb-1 text-sm tracking-wider uppercase">Total Score</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-extrabold tracking-tight">
-                  {myRanking ? myRanking.total_score : '-'}
+                <span className="text-5xl md:text-6xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#80bfff] to-[#ffffff]">
+                  {myRanking ? myRanking.global_total_score : '-'}
                 </span>
-                <span className="text-2xl font-bold text-blue-200">점</span>
+                <span className="text-xl md:text-2xl font-bold text-blue-300">PTS</span>
               </div>
+              {myRanking && (
+                <p className="text-sm text-blue-200/60 mt-2 font-medium">
+                  총 {myRanking.participated_count}개의 프로젝트 점수 합산
+                </p>
+              )}
             </div>
 
-            <div className="mt-4 md:mt-0 flex-1 md:text-right relative z-10">
-              <p className="text-blue-100 text-sm font-semibold">
+            <div className="hidden md:flex flex-col items-end">
+              <span className="px-4 py-1.5 bg-white/10 rounded-full text-xs font-bold tracking-widest uppercase text-blue-200 mb-3">
+                Team Leader
+              </span>
+              <p className="text-white text-lg font-bold">
                 {user.user_metadata?.user_name || user.email}
               </p>
+              <p className="text-blue-200/60 text-sm font-medium">@{user.user_metadata?.preferred_username || 'user'}</p>
             </div>
           </div>
         ) : (
-          <div className="relative z-10 text-center py-2">
-            <p className="text-blue-100 text-lg font-semibold mb-1">내 순위를 확인하려면</p>
-            <p className="text-white text-xl font-extrabold">GitHub 로그인이 필요합니다</p>
+          <div className="relative z-10 text-center py-8">
+            <p className="text-blue-200 text-lg font-bold mb-2">내 랭킹과 누적 상금을 확인하려면</p>
+            <p className="text-white text-3xl font-extrabold tracking-tight">GitHub 로그인이 필요합니다</p>
           </div>
         )}
       </div>
 
-      {/* 시각화 차트 */}
-      {!isLoading && rankings.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          {/* 순위 막대 차트 */}
-          <div className="lg:col-span-2 bg-white rounded-[2rem] p-8"
-            style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }}>
-            <h3 className="text-lg font-extrabold text-[#2c2f31] mb-6">Top {Math.min(rankings.length, 8)} 팀 점수</h3>
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={rankings.slice(0, 8)} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f5f7f9" />
-                <XAxis
-                  dataKey="team_name"
-                  tick={{ fontSize: 11, fontWeight: 700, fill: '#9a9d9f' }}
-                  tickFormatter={(v: string) => v.length > 6 ? v.slice(0, 6) + '…' : v}
-                />
-                <YAxis tick={{ fontSize: 11, fontWeight: 700, fill: '#9a9d9f' }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 8px 30px rgba(0,81,210,0.1)', fontWeight: 700 }}
-                  formatter={(value: number) => [`${value}점`, '점수']}
-                />
-                <Bar dataKey="total_score" radius={[8, 8, 0, 0]}>
-                  {rankings.slice(0, 8).map((_, i) => (
-                    <Cell
-                      key={i}
-                      fill={i === 0 ? '#0064ff' : i === 1 ? '#7a9dff' : i === 2 ? '#a8c0ff' : '#eef1f3'}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* 점수 구성 도넛 차트 */}
-          <div className="bg-white rounded-[2rem] p-8"
-            style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }}>
-            <h3 className="text-lg font-extrabold text-[#2c2f31] mb-6">점수 구성</h3>
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: '심사위원', value: 70 },
-                    { name: '참가자 투표', value: 30 },
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
-                  dataKey="value"
-                >
-                  <Cell fill="#0064ff" />
-                  <Cell fill="#a8c0ff" />
-                </Pie>
-                <Legend
-                  iconType="circle"
-                  formatter={(value) => <span style={{ fontWeight: 700, fontSize: 12, color: '#595c5e' }}>{value}</span>}
-                />
-                <Tooltip
-                  contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 8px 30px rgba(0,81,210,0.1)', fontWeight: 700 }}
-                  formatter={(value: number) => [`${value}%`, '']}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-            <p className="text-xs font-semibold text-[#9a9d9f] text-center mt-2">기본 배점 기준</p>
-          </div>
-        </div>
-      )}
-
-      {/* 랭킹 목록 */}
-      <h3 className="text-2xl font-extrabold mb-6 text-[#2c2f31]">
-        {selectedHackathonId
-          ? hackathons.find((h) => h.id === selectedHackathonId)?.title ?? 'Top Teams'
-          : 'Top Teams'}
-      </h3>
-
       {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 bg-white rounded-3xl animate-pulse border border-slate-100" />
-          ))}
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin w-12 h-12 border-4 border-[#0064ff] border-t-transparent rounded-full" />
         </div>
       ) : rankings.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-xl font-bold text-[#2c2f31] mb-2">아직 순위가 없습니다</p>
-          <p className="text-[#595c5e]">제출이 완료되면 순위가 표시됩니다.</p>
+        <div className="text-center py-20 bg-slate-50/50 rounded-3xl border border-slate-100">
+          <p className="text-xl font-bold text-[#2c2f31] mb-2">아직 집계된 랭킹이 없습니다</p>
+          <p className="text-[#595c5e] font-medium">첫 번째 해커톤 결과를 기다리는 중입니다.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {rankings.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-center p-6 sm:p-8 bg-white rounded-[2rem] border border-slate-100/60 hover:-translate-y-1 transition-transform"
-              style={{ boxShadow: '0 20px 40px rgba(0, 81, 210, 0.04)' }}
-            >
-              <div className={`w-12 sm:w-16 font-extrabold text-2xl sm:text-3xl ${rankColor(entry.rank)}`}>
-                {entry.rank}
-              </div>
-
-              <div className="flex-1 mr-4">
-                <h4 className={`text-lg sm:text-2xl font-bold ${entry.rank <= 3 ? 'text-[#2c2f31]' : 'text-[#595c5e]'}`}>
-                  {entry.team_name}
-                </h4>
-              </div>
-
-              <div className="text-right flex items-center gap-4 sm:gap-6">
-                <div className="hidden sm:block">
-                  <span className="text-sm font-semibold text-[#9a9d9f] block">Total Score</span>
-                  <span className="text-xl font-bold text-[#0064ff]">{entry.total_score}</span>
+        <>
+          {/* Top 3 Podium (데스크탑에서만 제대로 보이고 모바일은 리스트처럼) */}
+          {top3.length > 0 && (
+            <div className="flex flex-col md:flex-row justify-center items-end gap-6 lg:gap-10 mb-20 max-w-5xl mx-auto px-4">
+              {/* 2위 */}
+              {top3[1] && (
+                <div className="w-full md:w-1/3 order-2 md:order-1 flex flex-col items-center group">
+                  <div className="w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-[#e2e8f0] bg-white shadow-xl relative z-10 group-hover:-translate-y-2 transition-transform duration-300">
+                    <img src={top3[1].avatar_url} alt="2nd" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-[#f5f7f9] to-white border border-[#e2e8f0] rounded-t-3xl pt-8 pb-6 px-4 text-center shadow-lg relative -top-10 h-48 md:h-56 flex flex-col justify-end">
+                    <h3 className="text-xl font-bold text-[#2c2f31] truncate w-full">{top3[1].name}</h3>
+                    <p className="text-sm font-semibold text-[#8792a1] mb-4">@{top3[1].github_login}</p>
+                    <div className="text-3xl font-extrabold text-[#8792a1] tracking-tighter">
+                      {top3[1].global_total_score} <span className="text-lg">pts</span>
+                    </div>
+                  </div>
                 </div>
-                {entry.hackathon_slug ? (
-                  <Link
-                    to={`/hackathons/${entry.hackathon_slug}`}
-                    className="px-5 py-2.5 font-bold text-sm bg-slate-50 text-[#595c5e] hover:bg-slate-100 rounded-xl transition-colors whitespace-nowrap"
-                  >
-                    제출물 보기
-                  </Link>
-                ) : (
-                  <button className="px-5 py-2.5 font-bold text-sm bg-slate-50 text-[#9a9d9f] rounded-xl whitespace-nowrap cursor-default">
-                    제출물 보기
-                  </button>
-                )}
-              </div>
+              )}
+
+              {/* 1위 */}
+              {top3[0] && (
+                <div className="w-full md:w-1/3 order-1 md:order-2 flex flex-col items-center group relative z-20">
+                  <div className="absolute -top-10 text-4xl mb-4 animate-bounce">👑</div>
+                  <div className="w-32 h-32 mb-4 rounded-full overflow-hidden border-4 border-[#e9b824] bg-white shadow-2xl relative z-10 group-hover:-translate-y-3 transition-transform duration-300">
+                    <img src={top3[0].avatar_url} alt="1st" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-[#fffcf3] to-white border-2 border-[#fde8a1] rounded-t-3xl pt-8 pb-8 px-4 text-center shadow-2xl relative -top-10 h-56 md:h-72 flex flex-col justify-end">
+                    <h3 className="text-2xl font-black text-[#2c2f31] truncate w-full">{top3[0].name}</h3>
+                    <p className="text-sm font-bold text-[#cd9018] mb-5">@{top3[0].github_login}</p>
+                    <div className="text-4xl font-extrabold text-[#e9b824] tracking-tighter">
+                      {top3[0].global_total_score} <span className="text-xl">pts</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3위 */}
+              {top3[2] && (
+                <div className="w-full md:w-1/3 order-3 flex flex-col items-center group">
+                  <div className="w-24 h-24 mb-4 rounded-full overflow-hidden border-4 border-[#f5d0b5] bg-white shadow-xl relative z-10 group-hover:-translate-y-2 transition-transform duration-300">
+                    <img src={top3[2].avatar_url} alt="3rd" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="w-full bg-gradient-to-t from-[#fff7ef] to-white border border-[#f5d0b5] rounded-t-3xl pt-8 pb-6 px-4 text-center shadow-lg relative -top-10 h-44 md:h-48 flex flex-col justify-end">
+                    <h3 className="text-lg font-bold text-[#2c2f31] truncate w-full">{top3[2].name}</h3>
+                    <p className="text-sm font-semibold text-[#cd7f32] mb-3">@{top3[2].github_login}</p>
+                    <div className="text-2xl font-extrabold text-[#cd7f32] tracking-tighter">
+                      {top3[2].global_total_score} <span className="text-base">pts</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* 그 외 랭킹 리스트 */}
+          {others.length > 0 && (
+            <div className="max-w-4xl mx-auto flex flex-col gap-4">
+              {others.map((entry) => (
+                <div 
+                  key={entry.user_id}
+                  className="flex items-center p-4 sm:p-6 bg-white rounded-[2rem] border border-slate-100/60 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
+                  style={{ boxShadow: '0 10px 30px rgba(0, 81, 210, 0.03)' }}
+                >
+                  <div className={`w-16 font-extrabold text-2xl text-center ${getRankColor(entry.global_rank).split(' ')[0]}`}>
+                    {entry.global_rank}
+                  </div>
+
+                  <img 
+                    src={entry.avatar_url} 
+                    alt={entry.name} 
+                    className="w-14 h-14 rounded-full object-cover bg-slate-100 mr-5"
+                  />
+
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h4 className="text-lg sm:text-xl font-bold text-[#2c2f31] truncate">
+                      {entry.name}
+                    </h4>
+                    <p className="text-sm font-medium text-[#9a9d9f] truncate">@{entry.github_login}</p>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="text-xs sm:text-sm font-bold text-[#9a9d9f] uppercase tracking-wider mb-1">
+                      Score
+                    </div>
+                    <div className="text-xl sm:text-2xl font-extrabold text-[#0064ff] tracking-tighter">
+                      {entry.global_total_score}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )

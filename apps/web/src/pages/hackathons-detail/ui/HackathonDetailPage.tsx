@@ -6,8 +6,17 @@ import { fetchHackathonBySlug, fetchTeamsByHackathon, fetchRankingsByHackathon, 
 import { SubmitForm } from "@/features/submit-hackathon"
 import { CreateTeamModal } from "@/features/create-team"
 
-const TABS = ['Overview', 'Info', 'Eval', 'Schedule', 'Prize', 'Teams', 'Submit', 'Leaderboard'] as const
-type Tab = typeof TABS[number]
+const TABS = [
+  { id: 'Overview', label: '소개' },
+  { id: 'Info', label: '공지/규칙' },
+  { id: 'Eval', label: '평가 기준' },
+  { id: 'Schedule', label: '일정' },
+  { id: 'Prize', label: '시상 정보' },
+  { id: 'Teams', label: '참가 팀' },
+  { id: 'Submit', label: '제출 안내' },
+  { id: 'Leaderboard', label: '명예의 전당' }
+] as const
+type Tab = typeof TABS[number]['id']
 
 // ---- 탭별 컨텐츠 컴포넌트 ----
 
@@ -168,13 +177,32 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
           {rankings.map((entry: RankingEntry) => (
             <div
               key={entry.id}
-              className="flex items-center p-6 bg-[#f5f7f9] rounded-2xl"
+              className="flex items-center p-6 bg-[#f5f7f9] rounded-2xl group hover:-translate-y-1 transition-all border border-transparent hover:border-slate-200"
             >
               <span className={`w-12 text-2xl font-extrabold ${rankColor(entry.rank)}`}>
-                {entry.rank}
+                {entry.total_score ? entry.rank : '-'}
               </span>
               <span className="flex-1 text-lg font-bold text-[#2c2f31]">{entry.team_name}</span>
-              <span className="text-xl font-extrabold text-[#0064ff]">{entry.total_score}점</span>
+              <div className="relative group/tooltip">
+                <span className={`text-xl font-extrabold ${entry.total_score ? 'text-[#0064ff] cursor-help' : 'text-[#9a9d9f]'}`}>
+                  {entry.total_score ? `${entry.total_score}점` : '미제출'}
+                </span>
+                
+                {entry.score_breakdown_json && entry.total_score && (
+                  <div className="absolute right-0 bottom-full mb-3 w-48 p-4 bg-[#2c2f31] text-white text-sm rounded-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-20 shadow-2xl">
+                    <p className="font-bold text-[#9a9d9f] uppercase tracking-wider mb-2 pb-2 border-b border-gray-600 text-[11px]">세부 평가 점수</p>
+                    <div className="flex flex-col gap-1.5">
+                      {Object.entries(entry.score_breakdown_json).map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-4">
+                          <span className="capitalize">{k === 'creativity' ? '창의성' : k === 'technical' ? '기술력' : k === 'business' ? '사업성' : k}</span>
+                          <span className="font-bold text-blue-300">{v as string}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="absolute top-full right-4 w-3 h-3 bg-[#2c2f31] rotate-45 -mt-1.5" />
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -185,6 +213,58 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
 
 function DetailContentTab({ title, content }: { title: string; content?: any }) {
   if (!content) return <ComingSoonTab tab={title} />
+
+  // 공지/규칙 (Info) 특화 렌더링
+  if (content.rules || content.notice) {
+    return (
+      <div className="space-y-10">
+        {content.rules && (
+          <div>
+            <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">🔥 참가 규정</h3>
+            <ul className="space-y-3">
+              {content.rules.map((r: string, i: number) => (
+                <li key={i} className="flex gap-4 text-[#595c5e] font-medium leading-relaxed bg-[#f5f7f9] p-5 rounded-2xl items-center">
+                  <span className="w-6 h-6 rounded-full bg-white text-[#0064ff] font-black flex items-center justify-center text-sm shadow-sm shrink-0">{i+1}</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {content.notice && (
+          <div>
+            <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">📢 주의 사항</h3>
+            <div className="bg-red-50/50 border border-red-100 p-6 rounded-2xl">
+              <p className="text-red-500 font-bold leading-relaxed flex gap-3">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                {content.notice}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // 평가 기준 (Eval) 특화 렌더링
+  if (content.criteria) {
+    return (
+      <div>
+        <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">📊 세부 평가 기준</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {content.criteria.map((c: any, i: number) => (
+            <div key={i} className="p-8 border border-slate-100 shadow-[0_10px_30px_rgba(0,100,255,0.02)] bg-white rounded-[2rem] flex flex-col hover:-translate-y-1 transition-transform cursor-default">
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-extrabold text-[#2c2f31] text-xl">{c.item}</span>
+                <span className="bg-blue-50 text-[#0064ff] font-extrabold px-4 py-1.5 rounded-full text-sm">{c.weight}</span>
+              </div>
+              <p className="text-[#595c5e] text-[15px] leading-relaxed font-medium">{c.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -277,17 +357,17 @@ export function HackathonDetailPage() {
 
       {/* Sticky Tab Nav */}
       <div className="sticky top-16 z-40 bg-[#f5f7f9]/90 backdrop-blur-md pt-4 pb-0 mb-8 overflow-x-auto custom-scrollbar">
-        <div className="flex gap-6 border-b-2 border-slate-200/50 text-[#595c5e] font-bold text-[15px] px-2">
+        <div className="flex gap-6 border-b-2 border-slate-200/50 text-[#595c5e] font-bold text-[15px] px-2 min-w-max">
           {TABS.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-4 px-1 whitespace-nowrap transition-colors relative ${
-                activeTab === tab ? 'text-[#0064ff]' : 'hover:text-[#2c2f31]'
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`pb-4 px-1 transition-colors relative ${
+                activeTab === tab.id ? 'text-[#0064ff]' : 'hover:text-[#2c2f31]'
               }`}
             >
-              {tab}
-              {activeTab === tab && (
+              {tab.label}
+              {activeTab === tab.id && (
                 <div className="absolute bottom-[-2px] left-0 w-full h-[3px] bg-[#0064ff] rounded-t-full" />
               )}
             </button>
@@ -300,16 +380,27 @@ export function HackathonDetailPage() {
         {activeTab === 'Overview' && (
           <div>
             <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">대회 소개</h3>
-            <p className="text-[#595c5e] leading-relaxed text-lg">{hackathon.description}</p>
-            {details?.overview_json && (
+            <p className="text-[#595c5e] leading-relaxed text-lg line-clamp-4">{hackathon.description}</p>
+            {isDetailsLoading ? (
+              <div className="mt-8 pt-8 border-t border-slate-100 animate-pulse space-y-4">
+                <div className="h-6 bg-slate-200 rounded w-1/4"></div>
+                <div className="h-20 bg-slate-100 rounded w-full"></div>
+              </div>
+            ) : details?.overview_json ? (
               <div className="mt-8 pt-8 border-t border-slate-100">
                 <DetailContentTab title="추가 개요" content={details.overview_json} />
               </div>
-            )}
+            ) : null}
           </div>
         )}
-        {activeTab === 'Info' && <DetailContentTab title="공지/규칙" content={details?.info_json} />}
-        {activeTab === 'Eval' && <DetailContentTab title="평가 기준" content={details?.eval_json} />}
+        {activeTab === 'Info' && (
+          isDetailsLoading ? <div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /> : 
+          <DetailContentTab title="공지/규칙" content={details?.info_json} />
+        )}
+        {activeTab === 'Eval' && (
+          isDetailsLoading ? <div className="h-40 bg-slate-100 rounded-2xl animate-pulse" /> :
+          <DetailContentTab title="평가 기준" content={details?.eval_json} />
+        )}
         {activeTab === 'Schedule' && (
           <ScheduleTab
             deadline={hackathon.submission_deadline_at}
@@ -333,10 +424,13 @@ export function HackathonDetailPage() {
       </div>
 
       {/* Floating CTA */}
-      {hackathon.status !== 'ended' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-6">
+      {hackathon.status !== 'ended' && activeTab !== 'Submit' && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-sm px-6" style={{ zIndex: 45 }}>
           <button
-            onClick={() => setActiveTab('Submit')}
+            onClick={() => {
+              setActiveTab('Submit');
+              window.scrollTo({ top: 300, behavior: 'smooth' });
+            }}
             className="w-full shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-xl py-5 rounded-full hover:scale-[1.02] transition-transform active:scale-95"
           >
             대회 참가하기

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -13,6 +14,7 @@ interface SubmitFormProps {
 export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const [inputType, setInputType] = useState<'url' | 'file'>('url')
 
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ['teams', hackathonId],
@@ -24,6 +26,7 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<SubmitHackathonFormValues>({
     resolver: zodResolver(submitHackathonSchema),
@@ -38,6 +41,7 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
           project_url: values.project_url,
           demo_url: values.demo_url || undefined,
           description: values.description,
+          memo: values.memo || undefined,
         },
         created_by: user!.id,
       }),
@@ -80,6 +84,19 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
         <p className="text-[#595c5e]">팀 프로젝트 링크와 설명을 입력해주세요.</p>
       </div>
 
+      {/* 제출 가이드라인 */}
+      <div className="bg-[#f5f7f9] p-5 rounded-2xl border border-[#eef1f3]">
+        <h4 className="font-bold text-[#2c2f31] flex items-center gap-2 mb-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#0064ff]"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          제출 가이드라인
+        </h4>
+        <ul className="space-y-2 text-sm text-[#595c5e] font-medium">
+          <li className="flex gap-2"><span className="text-[#9a9d9f]">•</span> 데모 영상 링크는 가가급적 3분 이내로 제작을 권장합니다.</li>
+          <li className="flex gap-2"><span className="text-[#9a9d9f]">•</span> Github 저장소를 제출하실 경우 반드시 Public 상태인지 확인해주세요.</li>
+          <li className="flex gap-2"><span className="text-[#9a9d9f]">•</span> 여러 개의 파일은 ZIP으로 압축하거나 구글 드라이브 링크로 제출하세요.</li>
+        </ul>
+      </div>
+
       {/* 팀 선택 */}
       <div>
         <label className="block text-sm font-bold text-[#2c2f31] mb-2">팀 선택</label>
@@ -105,16 +122,66 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
         {errors.team_id && <p className="mt-1.5 text-sm text-red-500 font-semibold">{errors.team_id.message}</p>}
       </div>
 
-      {/* 프로젝트 URL */}
+      {/* 프로젝트 제출물 (URL or File) */}
       <div>
-        <label className="block text-sm font-bold text-[#2c2f31] mb-2">
-          프로젝트 URL <span className="text-red-400">*</span>
-        </label>
-        <input
-          {...register('project_url')}
-          placeholder="https://github.com/your-team/project"
-          className="w-full px-4 py-3 rounded-2xl bg-[#f5f7f9] border border-transparent focus:border-[#0064ff] focus:outline-none text-[#2c2f31] font-semibold transition-colors"
-        />
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-bold text-[#2c2f31]">
+            제출물 <span className="text-red-400">*</span>
+          </label>
+          <div className="flex bg-[#eef1f3] p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setInputType('url')}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                inputType === 'url' ? 'bg-white text-[#0064ff] shadow-sm' : 'text-[#9a9d9f]'
+              }`}
+            >
+              🔗 링크 (URL)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInputType('file')
+                setValue('project_url', '') // reset to empty when switching
+              }}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                inputType === 'file' ? 'bg-white text-[#0064ff] shadow-sm' : 'text-[#9a9d9f]'
+              }`}
+            >
+              📁 파일 (ZIP, PDF 등)
+            </button>
+          </div>
+        </div>
+        
+        {inputType === 'url' ? (
+          <input
+            {...register('project_url')}
+            placeholder="https://github.com/your-team/project"
+            className="w-full px-4 py-3 rounded-2xl bg-[#f5f7f9] border border-transparent focus:border-[#0064ff] focus:outline-none text-[#2c2f31] font-semibold transition-colors"
+          />
+        ) : (
+          <div className="relative w-full">
+            <input
+              type="file"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  // MVP에서는 실제 파일 업로드 대신 [File] 가짜 URL 텍스트를 저장합니다.
+                  setValue('project_url', `[File] ${file.name}`)
+                } else {
+                  setValue('project_url', '')
+                }
+              }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="w-full px-4 py-8 rounded-2xl bg-white border-2 border-dashed border-[#cbd5e1] hover:border-[#0064ff] hover:bg-[#f5f7f9] focus:outline-none text-[#595c5e] font-semibold transition-colors flex flex-col items-center justify-center gap-2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#9a9d9f]"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>클릭하거나 파일을 여기로 드래그하세요</span>
+            </div>
+            {/* hidden input for validation */}
+            <input type="hidden" {...register('project_url')} />
+          </div>
+        )}
         {errors.project_url && <p className="mt-1.5 text-sm text-red-500 font-semibold">{errors.project_url.message}</p>}
       </div>
 
@@ -134,15 +201,29 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
       {/* 프로젝트 설명 */}
       <div>
         <label className="block text-sm font-bold text-[#2c2f31] mb-2">
-          프로젝트 설명 <span className="text-red-400">*</span>
+          프로젝트 요약 설명 <span className="text-red-400">*</span>
         </label>
         <textarea
           {...register('description')}
-          rows={5}
+          rows={4}
           placeholder="프로젝트의 핵심 기능, 기술 스택, 차별점을 설명해주세요."
           className="w-full px-4 py-3 rounded-2xl bg-[#f5f7f9] border border-transparent focus:border-[#0064ff] focus:outline-none text-[#2c2f31] font-semibold transition-colors resize-none"
         />
         {errors.description && <p className="mt-1.5 text-sm text-red-500 font-semibold">{errors.description.message}</p>}
+      </div>
+
+      {/* 추가 메모 (선택) */}
+      <div>
+        <label className="block text-sm font-bold text-[#2c2f31] mb-2">
+          팀 회고 및 추가 메모 <span className="text-[#9a9d9f] font-normal">(선택)</span>
+        </label>
+        <textarea
+          {...register('memo')}
+          rows={3}
+          placeholder="어떤 점이 아쉬웠나요? 혹은 심사위원에게 전하고 싶은 말이 있나요?"
+          className="w-full px-4 py-3 rounded-2xl bg-[#f5f7f9] border border-transparent focus:border-[#0064ff] focus:outline-none text-[#2c2f31] font-semibold transition-colors resize-none"
+        />
+        {errors.memo && <p className="mt-1.5 text-sm text-red-500 font-semibold">{errors.memo.message}</p>}
       </div>
 
       {/* 에러 */}

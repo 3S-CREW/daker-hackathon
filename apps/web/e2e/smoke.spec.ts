@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
 // 시나리오 1: 메인 -> 해커톤 목록 -> 상세 페이지 진입
-test('메인에서 해커톤 상세 페이지까지 진입', async ({ page }) => {
+test('@smoke 메인에서 해커톤 상세 페이지까지 진입', async ({ page }) => {
   await page.goto('/')
   await expect(page.locator('h1').first()).toBeVisible()
 
@@ -14,7 +14,7 @@ test('메인에서 해커톤 상세 페이지까지 진입', async ({ page }) =>
 })
 
 // 시나리오 2: 해커톤 목록 페이지 렌더링
-test('해커톤 목록 페이지 정상 렌더링', async ({ page }) => {
+test('@smoke 해커톤 목록 페이지 정상 렌더링', async ({ page }) => {
   await page.goto('/hackathons')
   await expect(page.locator('h1')).toBeVisible()
 
@@ -25,7 +25,7 @@ test('해커톤 목록 페이지 정상 렌더링', async ({ page }) => {
 })
 
 // 시나리오 3: 캠프(팀 목록) 페이지 필터 렌더링
-test('Camp 페이지 - 필터 버튼 렌더링 확인', async ({ page }) => {
+test('@smoke Camp 페이지 - 필터 버튼 렌더링 확인', async ({ page }) => {
   await page.goto('/camp')
   await expect(page.locator('h1').first()).toBeVisible()
 
@@ -39,7 +39,7 @@ test('Camp 페이지 - 필터 버튼 렌더링 확인', async ({ page }) => {
 })
 
 // 시나리오 4: 랭킹 페이지 렌더링
-test('Rankings 페이지 - 순위 테이블 렌더링 확인', async ({ page }) => {
+test('@smoke Rankings 페이지 - 순위 테이블 렌더링 확인', async ({ page }) => {
   await page.goto('/rankings')
   await expect(page.locator('h1')).toContainText('랭킹')
 
@@ -53,7 +53,7 @@ test('Rankings 페이지 - 순위 테이블 렌더링 확인', async ({ page }) 
 })
 
 // 시나리오 5: AI 챗봇 모달 열기
-test('AI 챗봇 플로팅 버튼 클릭 시 모달 오픈', async ({ page }) => {
+test('@smoke AI 챗봇 플로팅 버튼 클릭 시 모달 오픈', async ({ page }) => {
   await page.goto('/')
 
   // AI 플로팅 버튼 클릭

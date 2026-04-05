@@ -13,12 +13,23 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'query': ['@tanstack/react-query'],
-          'form': ['react-hook-form', '@hookform/resolvers', 'zod'],
-          'supabase': ['@supabase/supabase-js'],
-          'charts': ['recharts'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
+            return 'react-vendor'
+          }
+          if (id.includes('node_modules/@tanstack/react-query')) {
+            return 'query'
+          }
+          if (id.includes('node_modules/react-hook-form') || id.includes('node_modules/@hookform/resolvers') || id.includes('node_modules/zod')) {
+            return 'form'
+          }
+          if (id.includes('node_modules/@supabase/supabase-js')) {
+            return 'supabase'
+          }
+          if (id.includes('node_modules/recharts')) {
+            return 'charts'
+          }
+          return undefined
         },
       },
     },

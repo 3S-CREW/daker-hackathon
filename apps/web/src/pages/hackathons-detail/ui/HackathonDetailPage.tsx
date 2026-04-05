@@ -364,6 +364,10 @@ type DetailTabContent =
   | null
   | undefined;
 
+function isInfoContent(content: DetailTabContent): content is InfoContent {
+  return !!content && typeof content === "object" && ("rules" in content || "notice" in content);
+}
+
 function DetailContentTab({
   title,
   content,
@@ -385,7 +389,7 @@ function DetailContentTab({
   const resolved = effectiveContent;
 
   // 공지/규칙 (Info) 특화 렌더링
-  if (resolved.rules || resolved.notice) {
+  if (isInfoContent(resolved)) {
     return (
       <div className="space-y-10">
         {resolved.rules && (

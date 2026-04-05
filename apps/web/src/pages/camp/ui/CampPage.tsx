@@ -1,9 +1,11 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { fetchTeams, fetchHackathons, type Team, fetchDirectMessages, sendDirectMessage } from "@/shared/api/queries"
+import { deleteTeam, fetchTeams, fetchHackathons, type Team, fetchDirectMessages, sendDirectMessage } from "@/shared/api/queries"
 import { supabase } from "@/shared/api/supabase"
 import { useAuthStore } from "@/shared/store/authStore"
 import { CreateTeamModal } from "@/features/create-team"
+import { ExternalLinkModal } from "@/shared/ui/ExternalLinkModal"
+import { toast } from "sonner"
 
 // ---- DM Modal Component ----
 function DirectMessageModal({ 
@@ -34,17 +36,17 @@ function DirectMessageModal({
       })
       setContent('')
       onClose()
-      alert('쪽지를 성공적으로 보냈습니다!')
+      toast.success('쪽지를 성공적으로 보냈습니다!')
     } catch (e) {
-      alert('쪽지 전송 실패.')
+      toast.error('쪽지 전송에 실패했습니다.')
     } finally {
       setIsSending(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#2c2f31]/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="bg-white rounded-[2rem] p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         <h3 className="text-xl font-bold text-[#2c2f31] mb-2">쪽지 보내기</h3>
         <p className="text-[#595c5e] text-sm mb-6">수신자: <span className="font-bold text-[#0064ff]">{receiverName}</span></p>
         
@@ -57,13 +59,13 @@ function DirectMessageModal({
         />
         
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-3 bg-[#eef1f3] text-[#595c5e] font-bold rounded-xl hover:bg-slate-200">
+          <button onClick={onClose} className="flex-1 py-3 bg-[#f5f7f9] text-[#595c5e] font-bold rounded-xl hover:bg-slate-200 cursor-pointer">
             취소
           </button>
           <button 
             onClick={handleSend}
             disabled={isSending || !content.trim()}
-            className="flex-1 py-3 bg-[#0064ff] text-white font-bold rounded-xl hover:bg-[#0051d2] disabled:opacity-50"
+            className="flex-1 py-3 bg-[#0064ff] text-white font-bold rounded-xl hover:bg-[#0051d2] disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-100"
           >
             {isSending ? '전송 중...' : '보내기'}
           </button>
@@ -87,8 +89,6 @@ function Inbox() {
 
   if (!user) return null
 
-  // Sender or Receiver logic mapping
-  // Since our query fetches all DMs for the user, we just display them simply.
   const inboxMessages = messages.filter(m => m.receiver_id === user.id)
 
   return (
@@ -96,7 +96,7 @@ function Inbox() {
       <div className="fixed bottom-10 left-10 z-40">
         <button
           onClick={() => setOpen(!open)}
-          className="bg-white border-2 border-[#eef1f3] shadow-lg text-[#2c2f31] w-14 h-14 rounded-full hover:scale-105 transition-transform flex items-center justify-center relative"
+          className="bg-white border-2 border-[#eef1f3] shadow-lg text-[#2c2f31] w-14 h-14 rounded-full hover:scale-105 transition-transform flex items-center justify-center relative cursor-pointer"
         >
           <svg className="w-6 h-6 text-[#595c5e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -108,32 +108,35 @@ function Inbox() {
       </div>
 
       {open && (
-        <div className="fixed bottom-28 left-10 z-50 w-80 sm:w-96 bg-white rounded-3xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden flex flex-col max-h-[60vh]">
-          <div className="bg-[#f5f7f9] p-4 flex justify-between items-center border-b border-slate-200">
-            <h3 className="font-extrabold text-[#2c2f31] flex items-center gap-2">
-              받은 쪽지함 <span className="px-2 py-0.5 bg-[#0064ff] text-white text-xs rounded-full">{inboxMessages.length}</span>
-            </h3>
-            <button onClick={() => setOpen(false)} className="text-[#9a9d9f] hover:text-[#2c2f31]">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div className="overflow-y-auto p-4 space-y-3 custom-scrollbar flex-1">
-            {inboxMessages.length === 0 ? (
-              <p className="text-center text-sm text-[#9a9d9f] py-10 font-medium">받은 쪽지가 없습니다.</p>
-            ) : (
-              inboxMessages.map(m => (
-                <div key={m.id} className="bg-[#f5f7f9] p-4 rounded-2xl relative">
-                  <div className="flex items-center gap-2 mb-2">
-                    <img src={m.sender?.avatar_url || 'https://github.com/ghost.png'} className="w-6 h-6 rounded-full" />
-                    <span className="text-xs font-bold text-[#2c2f31]">{m.sender?.name || 'Unknown'}</span>
-                    <span className="text-[10px] text-[#9a9d9f] ml-auto">{new Date(m.created_at).toLocaleDateString()}</span>
+        <>
+          <div className="fixed inset-0 z-45" onClick={() => setOpen(false)} />
+          <div className="fixed bottom-28 left-10 z-50 w-80 sm:w-96 bg-white rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-slate-100 overflow-hidden flex flex-col max-h-[60vh] animate-in slide-in-from-bottom-5 duration-300">
+            <div className="bg-[#f5f7f9] p-4 flex justify-between items-center border-b border-slate-200">
+              <h3 className="font-extrabold text-[#2c2f31] flex items-center gap-2">
+                받은 쪽지함 <span className="px-2 py-0.5 bg-[#0064ff] text-white text-xs rounded-full">{inboxMessages.length}</span>
+              </h3>
+              <button onClick={() => setOpen(false)} className="text-[#9a9d9f] hover:text-[#2c2f31] cursor-pointer">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-3 custom-scrollbar flex-1">
+              {inboxMessages.length === 0 ? (
+                <p className="text-center text-sm text-[#9a9d9f] py-10 font-medium">받은 쪽지가 없습니다.</p>
+              ) : (
+                inboxMessages.map(m => (
+                  <div key={m.id} className="bg-[#f5f7f9] p-4 rounded-2xl relative">
+                    <div className="flex items-center gap-2 mb-2">
+                      <img src={m.sender?.avatar_url || 'https://github.com/ghost.png'} className="w-6 h-6 rounded-full" />
+                      <span className="text-xs font-bold text-[#2c2f31]">{m.sender?.name || 'Unknown'}</span>
+                      <span className="text-[10px] text-[#9a9d9f] ml-auto">{new Date(m.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm text-[#595c5e] break-words whitespace-pre-wrap">{m.content}</p>
                   </div>
-                  <p className="text-sm text-[#595c5e] break-words whitespace-pre-wrap">{m.content}</p>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </>
   )
@@ -147,14 +150,22 @@ export function CampPage() {
   const [filterMode, setFilterMode] = useState<'all' | 'recruiting'>('all')
   const [selectedHackathonId, setSelectedHackathonId] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingTeam, setEditingTeam] = useState<Team | undefined>(undefined)
 
-  // DM State
+  // DM / ExternalLink Modal State
   const [dmModalInfo, setDmModalInfo] = useState<{ open: boolean; receiverId: string; receiverName: string }>({
     open: false, receiverId: '', receiverName: ''
   })
+  const [extModalOpen, setExtModalOpen] = useState(false)
+  const [targetUrl, setTargetUrl] = useState('')
 
   const { data: hackathons = [] } = useQuery({ queryKey: ['hackathons'], queryFn: fetchHackathons })
   const { data: teams = [], isLoading } = useQuery({ queryKey: ['teams'], queryFn: fetchTeams })
+
+  const handleExternalClick = (url: string) => {
+    setTargetUrl(url)
+    setExtModalOpen(true)
+  }
 
   // 모집 토글 뮤테이션
   const toggleRecruitMutation = useMutation({
@@ -164,6 +175,19 @@ export function CampPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
+      toast.success('모집 상태가 변경되었습니다.')
+    }
+  })
+
+  // 삭제 뮤테이션
+  const deleteTeamMutation = useMutation({
+    mutationFn: (id: string) => deleteTeam(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teams'] })
+      toast.success('팀 모집 게시물이 삭제되었습니다.')
+    },
+    onError: () => {
+      toast.error('삭제에 실패했습니다.')
     }
   })
 
@@ -187,7 +211,7 @@ export function CampPage() {
       <div className="inline-flex bg-[#eef1f3] rounded-2xl p-1.5 mb-6 w-full sm:w-auto overflow-x-auto custom-scrollbar">
         <button
           onClick={() => setSelectedHackathonId(null)}
-          className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap ${
+          className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap cursor-pointer ${
             selectedHackathonId === null ? 'bg-white text-[#2c2f31] shadow-sm' : 'text-[#9a9d9f] hover:text-[#595c5e]'
           }`}
         >
@@ -197,7 +221,7 @@ export function CampPage() {
           <button
             key={h.id}
             onClick={() => setSelectedHackathonId(h.id)}
-            className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap ${
+            className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap cursor-pointer ${
               selectedHackathonId === h.id ? 'bg-white text-[#2c2f31] shadow-sm' : 'text-[#9a9d9f] hover:text-[#595c5e]'
             }`}
           >
@@ -210,7 +234,7 @@ export function CampPage() {
       <div className="flex gap-4 mb-10 overflow-x-auto pb-2 custom-scrollbar">
         <button
           onClick={() => setFilterMode('all')}
-          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm ${
+          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm cursor-pointer ${
             filterMode === 'all' ? 'text-white bg-[#2c2f31]' : 'text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]'
           }`}
         >
@@ -218,7 +242,7 @@ export function CampPage() {
         </button>
         <button
           onClick={() => setFilterMode('recruiting')}
-          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold transition-colors text-sm ${
+          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold transition-colors text-sm cursor-pointer ${
             filterMode === 'recruiting' ? 'text-white bg-[#0064ff] shadow-sm' : 'text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]'
           }`}
         >
@@ -237,8 +261,8 @@ export function CampPage() {
           <p className="text-xl font-bold text-[#2c2f31] mb-2">조건에 맞는 팀이 없습니다</p>
           <p className="text-[#595c5e] font-medium mb-6">원하는 포지션이 없다면 직접 팀을 만들어보세요!</p>
           <button
-            onClick={() => setModalOpen(true)}
-            className="bg-[#0064ff] text-white font-bold px-6 py-3 rounded-full hover:bg-[#0051d2] transition-colors shadow-md"
+            onClick={() => { setEditingTeam(undefined); setModalOpen(true); }}
+            className="bg-[#0064ff] text-white font-bold px-6 py-3 rounded-full hover:bg-[#0051d2] transition-colors shadow-md cursor-pointer"
           >
             팀 개설하기
           </button>
@@ -253,6 +277,22 @@ export function CampPage() {
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-extrabold text-[#2c2f31] truncate pr-2">{team.name}</h3>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {isMyTeam && (
+                      <div className="flex gap-1 mr-1">
+                        <button 
+                          onClick={() => { setEditingTeam(team); setModalOpen(true); }}
+                          className="p-1.5 text-[#595c5e] hover:bg-[#f5f7f9] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </button>
+                        <button 
+                          onClick={() => { if(confirm('게시물을 삭제하시겠습니까?')) deleteTeamMutation.mutate(team.id) }}
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      </div>
+                    )}
                     {team.recruiting ? (
                       <span className="px-3 py-1 text-[11px] font-black rounded-full text-[#0064ff] bg-blue-50/80 border border-blue-100 uppercase tracking-widest">
                         On
@@ -265,7 +305,7 @@ export function CampPage() {
                   </div>
                 </div>
 
-                <p className="text-[#595c5e] text-sm leading-relaxed mb-6 flex-1 line-clamp-3">
+                <p className="text-[#595c5e] text-sm leading-relaxed mb-6 flex-1 line-clamp-3 font-medium">
                   {team.intro}
                 </p>
 
@@ -278,7 +318,7 @@ export function CampPage() {
                   </div>
                   <div className="flex gap-1.5 flex-wrap">
                     {team.looking_for.map(role => (
-                      <span key={role} className="text-[11px] font-bold text-[#2c2f31] bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/50 shadow-sm">
+                      <span key={role} className="text-[11px] font-extrabold text-[#2c2f31] bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-sm">
                         {role}
                       </span>
                     ))}
@@ -288,10 +328,10 @@ export function CampPage() {
                 {isMyTeam ? (
                   <button 
                     onClick={() => toggleRecruitMutation.mutate({ teamId: team.id, current: team.recruiting })}
-                    className={`w-full py-3.5 font-extrabold rounded-2xl transition-all border-2 flex items-center justify-center gap-2 ${
+                    className={`w-full py-3.5 font-extrabold rounded-2xl transition-all border-2 flex items-center justify-center gap-2 cursor-pointer ${
                       team.recruiting 
                       ? 'border-[#eef1f3] text-[#595c5e] bg-white hover:bg-slate-50' 
-                      : 'border-transparent text-white bg-slate-800 hover:bg-slate-700'
+                      : 'border-transparent text-white bg-slate-800 hover:bg-slate-700 shadow-lg shadow-slate-200'
                     }`}
                   >
                     {team.recruiting ? '모집 마감하기' : '다시 모집하기'}
@@ -299,18 +339,16 @@ export function CampPage() {
                 ) : (
                   <div className="flex gap-2">
                     {team.contact_url && (
-                      <a
-                        href={team.contact_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-3.5 text-center text-[#0064ff] bg-blue-50/50 hover:bg-blue-100 font-extrabold rounded-2xl transition-colors border border-blue-100"
+                      <button
+                        onClick={() => handleExternalClick(team.contact_url!)}
+                        className="flex-1 py-3.5 text-center text-[#0064ff] bg-blue-50/50 hover:bg-blue-100 font-extrabold rounded-2xl transition-colors border border-blue-100 cursor-pointer"
                       >
                         지원하기
-                      </a>
+                      </button>
                     )}
                     <button 
                       onClick={() => setDmModalInfo({ open: true, receiverId: team.created_by!, receiverName: team.name })}
-                      className="px-4 py-3.5 text-white bg-[#0064ff] hover:bg-[#0051d2] font-extrabold rounded-2xl transition-transform shadow-[0_8px_20px_rgba(0,100,255,0.25)] hover:-translate-y-0.5"
+                      className="px-4 py-3.5 text-white bg-[#0064ff] hover:bg-[#0051d2] font-extrabold rounded-2xl transition-transform shadow-[0_8px_20px_rgba(0,100,255,0.25)] hover:-translate-y-0.5 cursor-pointer"
                     >
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </button>
@@ -325,8 +363,8 @@ export function CampPage() {
       {/* FAB - 새로운 팀 만들기 (하단 우측) */}
       <div className="fixed bottom-10 right-10 z-40 hidden md:block">
         <button
-          onClick={() => setModalOpen(true)}
-          className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg px-8 py-5 rounded-full hover:scale-105 transition-transform active:scale-95 flex items-center gap-3"
+          onClick={() => { setEditingTeam(undefined); setModalOpen(true); }}
+          className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg px-8 py-5 rounded-full hover:scale-105 transition-transform active:scale-95 flex items-center gap-3 cursor-pointer"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
@@ -335,7 +373,11 @@ export function CampPage() {
         </button>
       </div>
 
-      <CreateTeamModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateTeamModal 
+        open={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        initialData={editingTeam}
+      />
       
       {/* DM 전송 모달 */}
       <DirectMessageModal 
@@ -347,6 +389,12 @@ export function CampPage() {
 
       {/* 받은 쪽지함 좌측 하단 플로팅 */}
       <Inbox />
+
+      <ExternalLinkModal 
+        open={extModalOpen}
+        url={targetUrl}
+        onClose={() => setExtModalOpen(false)}
+      />
     </div>
   )
 }

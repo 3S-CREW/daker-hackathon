@@ -20,15 +20,30 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // 애니메이션을 위한 상태
+  const [shouldRender, setShouldRender] = useState(open)
+  const [isVisible, setIsVisible] = useState(false)
+
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100)
+      setShouldRender(true)
+      const timer = setTimeout(() => {
+        setIsVisible(true)
+        inputRef.current?.focus()
+      }, 10)
+      return () => clearTimeout(timer)
+    } else {
+      setIsVisible(false)
+      const timer = setTimeout(() => setShouldRender(false), 300)
+      return () => clearTimeout(timer)
     }
   }, [open])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    if (isVisible) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, isVisible])
 
   const sendMessage = async () => {
     const trimmed = input.trim()
@@ -40,7 +55,6 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
     setIsLoading(true)
 
     try {
-      // 현재 메시지 제외한 이전 대화 히스토리 전달 (최근 8턴)
       const history = messages.slice(1).slice(-8)
 
       const { data, error } = await supabase.functions.invoke('chat', {
@@ -71,60 +85,64 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
     }
   }
 
-  if (!open) return null
+  if (!shouldRender) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 sm:pb-24">
+    <div className={`fixed inset-0 z-[1000] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 sm:pb-24 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm sm:hidden"
+        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] sm:hidden"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative w-full sm:w-[400px] h-[70vh] sm:h-[560px] bg-white rounded-t-[2rem] sm:rounded-[2rem] flex flex-col overflow-hidden"
-        style={{ boxShadow: '0 20px 60px rgba(0, 81, 210, 0.15)' }}>
+      {/* Modal Container */}
+      <div 
+        className={`relative w-full sm:w-[420px] h-[75vh] sm:h-[620px] bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_30px_90px_rgba(0,81,210,0.25)] transition-all duration-500 ease-out border border-slate-100 ${isVisible ? 'translate-y-0 scale-100' : 'translate-y-12 scale-95'}`}
+      >
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#0051d2] to-[#7a9dff] flex items-center justify-center">
-              <span className="text-white font-extrabold text-sm">AI</span>
+        <div className="flex items-center justify-between px-7 py-6 border-b border-slate-50 bg-gradient-to-r from-white to-[#f8faff]">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0051d2] to-[#7a9dff] flex items-center justify-center shadow-lg shadow-blue-100 ring-2 ring-blue-50">
+              <span className="text-white font-black text-sm tracking-tighter">AI</span>
             </div>
             <div>
-              <p className="font-extrabold text-[#2c2f31] text-[15px]">Daker AI 도우미</p>
-              <p className="text-xs font-semibold text-[#9a9d9f]">해커톤 Q&A</p>
+              <p className="font-extrabold text-[#2c2f31] text-[16px] tracking-tight">Daker AI 도우미 🤖</p>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-[11px] font-bold text-[#9a9d9f] uppercase tracking-wider">Ready to assist</p>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setMessages([INITIAL_MESSAGE])}
+              onClick={() => { if(confirm('대화 내용을 초기화할까요?')) setMessages([INITIAL_MESSAGE])}}
               title="대화 초기화"
-              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] text-xs font-bold"
+              className="p-2 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] hover:text-[#595c5e] cursor-pointer"
             >
-              reset
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 transition-colors text-[#9a9d9f] font-bold text-lg"
+              className="p-2 flex items-center justify-center rounded-xl hover:bg-red-50 transition-colors text-[#9a9d9f] hover:text-red-500 cursor-pointer"
             >
-              x
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 custom-scrollbar bg-[#fcfdfe]">
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[80%] px-4 py-3 rounded-2xl text-[14px] font-semibold leading-relaxed ${
+                className={`max-w-[85%] px-5 py-3.5 rounded-[1.5rem] text-[14px] font-semibold leading-relaxed shadow-sm ${
                   msg.role === 'user'
-                    ? 'bg-[#0064ff] text-white rounded-br-md'
-                    : 'bg-[#f5f7f9] text-[#2c2f31] rounded-bl-md'
+                    ? 'bg-[#0064ff] text-white rounded-br-md shadow-[0_8px_20px_rgba(0,100,255,0.2)]'
+                    : 'bg-white text-[#2c2f31] rounded-bl-md border border-slate-100 shadow-[0_4px_15px_rgba(0,0,0,0.03)]'
                 }`}
               >
                 {msg.content}
@@ -134,10 +152,10 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
 
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-[#f5f7f9] px-4 py-3 rounded-2xl rounded-bl-md flex gap-1.5 items-center">
-                <span className="w-2 h-2 rounded-full bg-[#9a9d9f] animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[#9a9d9f] animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 rounded-full bg-[#9a9d9f] animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-white border border-slate-100 px-5 py-4 rounded-[1.5rem] rounded-bl-md flex gap-2 items-center shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0064ff] animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0064ff] animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0064ff] animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           )}
@@ -145,9 +163,9 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="px-4 py-4 border-t border-slate-100">
-          <div className="flex items-center gap-2 bg-[#f5f7f9] rounded-2xl px-4 py-3">
+        {/* Input Area */}
+        <div className="p-5 border-t border-slate-100 bg-white">
+          <div className="flex items-center gap-3 bg-[#f5f7f9] rounded-[1.5rem] px-5 py-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all border border-transparent focus-within:border-blue-200">
             <input
               ref={inputRef}
               type="text"
@@ -155,19 +173,19 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="질문을 입력하세요..."
-              className="flex-1 bg-transparent text-[14px] font-semibold text-[#2c2f31] placeholder:text-[#9a9d9f] outline-none"
+              className="flex-1 bg-transparent text-[14px] font-bold text-[#2c2f31] placeholder:text-[#9a9d9f] outline-none"
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="w-8 h-8 rounded-xl bg-[#0064ff] disabled:bg-slate-200 flex items-center justify-center transition-colors shrink-0"
+              className="w-10 h-10 rounded-2xl bg-[#0064ff] text-white disabled:bg-slate-200 flex items-center justify-center transition-all shadow-lg shadow-blue-100 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M1 7h12M7 1l6 6-6 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
             </button>
           </div>
-          <p className="text-center text-[11px] text-[#9a9d9f] font-semibold mt-2">Enter로 전송</p>
+          <p className="text-center text-[10px] text-[#9a9d9f] font-bold mt-3 tracking-widest uppercase opacity-70">
+            Powered by Daker Engine
+          </p>
         </div>
       </div>
     </div>

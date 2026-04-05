@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { Toaster } from "sonner"
 import { AuthProvider } from "@/app/providers/AuthProvider"
 import { Layout } from "@/widgets/layout/Layout"
 
@@ -22,6 +23,7 @@ function PageFallback() {
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" richColors />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>

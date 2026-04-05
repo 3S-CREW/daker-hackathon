@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createTeam, fetchHackathons } from '@/shared/api/queries'
+import { createTeam, updateTeam, fetchHackathons, type Team } from '@/shared/api/queries'
 import { useAuthStore } from '@/shared/store/authStore'
 import {
   createTeamSchema,
@@ -13,13 +13,15 @@ import {
 
 interface CreateTeamModalProps {
   hackathonId?: string  // 미전달 시 모달 내부에서 선택
+  initialData?: Team    // 수정 모드 시 데이터
   open: boolean
   onClose: () => void
 }
 
-export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalProps) {
+export function CreateTeamModal({ hackathonId, initialData, open, onClose }: CreateTeamModalProps) {
   const { user } = useAuthStore()
   const queryClient = useQueryClient()
+  const isEditMode = !!initialData
 
   const { data: hackathons = [] } = useQuery({
     queryKey: ['hackathons'],
@@ -37,13 +39,32 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
   } = useForm<CreateTeamFormValues>({
     resolver: zodResolver(createTeamSchema) as any,
     defaultValues: {
-      recruiting: true,
-      max_members: 4,
-      looking_for: [],
-      contact_type: 'kakao',
-      hackathon_id: hackathonId ?? '',
+      recruiting: initialData?.recruiting ?? true,
+      max_members: initialData?.max_members ?? 4,
+      looking_for: initialData?.looking_for ?? [],
+      contact_type: (initialData?.contact_type as any) ?? 'kakao',
+      contact_url: initialData?.contact_url ?? '',
+      name: initialData?.name ?? '',
+      intro: initialData?.intro ?? '',
+      hackathon_id: hackathonId ?? initialData?.hackathon_id ?? '',
     },
   })
+
+  // initialData 변경 시 폼 리셋
+  useEffect(() => {
+    if (open) {
+      reset({
+        recruiting: initialData?.recruiting ?? true,
+        max_members: initialData?.max_members ?? 4,
+        looking_for: initialData?.looking_for ?? [],
+        contact_type: (initialData?.contact_type as any) ?? 'kakao',
+        contact_url: initialData?.contact_url ?? '',
+        name: initialData?.name ?? '',
+        intro: initialData?.intro ?? '',
+        hackathon_id: hackathonId ?? initialData?.hackathon_id ?? '',
+      })
+    }
+  }, [initialData, open, reset, hackathonId])
 
   const lookingFor = watch('looking_for')
 
@@ -57,8 +78,8 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
   }
 
   const mutation = useMutation({
-    mutationFn: (values: CreateTeamFormValues) =>
-      createTeam({
+    mutationFn: async (values: CreateTeamFormValues) => {
+      const input = {
         hackathon_id: hackathonId ?? values.hackathon_id ?? '',
         name: values.name,
         recruiting: values.recruiting,
@@ -68,21 +89,31 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
         contact_type: values.contact_type,
         contact_url: values.contact_url,
         created_by: user!.id,
-      }),
+      }
+      if (isEditMode) {
+        await updateTeam(initialData!.id, input)
+      } else {
+        await createTeam(input)
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] })
-      queryClient.invalidateQueries({ queryKey: ['teams', hackathonId] })
+      if (hackathonId) queryClient.invalidateQueries({ queryKey: ['teams', hackathonId] })
       reset()
       onClose()
     },
   })
 
-  // ESC 키로 닫기
+  // ESC 키로 닫기 및 바디 스크롤 방지
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', handler)
+      document.body.style.overflow = 'unset'
+    }
   }, [open, onClose])
 
   if (!open) return null
@@ -90,13 +121,16 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
   // 비로그인 상태
   if (!user) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-        <div className="bg-white rounded-[2rem] p-10 max-w-sm w-full mx-4 text-center" onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c2f31]/60 backdrop-blur-sm p-4" onClick={onClose}>
+        <div className="bg-white rounded-[2rem] p-10 max-w-sm w-full text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
+             <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
           <h2 className="text-2xl font-extrabold text-[#2c2f31] mb-3">로그인이 필요합니다</h2>
-          <p className="text-[#595c5e] mb-8">팀을 만들려면 GitHub 로그인이 필요합니다.</p>
+          <p className="text-[#595c5e] mb-8 font-medium">참가 신청을 위해 GitHub 로그인이 필요합니다.</p>
           <button
             onClick={onClose}
-            className="w-full py-4 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-colors"
+            className="w-full py-4 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-all cursor-pointer"
           >
             확인
           </button>
@@ -106,20 +140,31 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c2f31]/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-t-[2rem] sm:rounded-[2rem] w-full sm:max-w-lg max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-[2.5rem] w-full max-w-xl flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-300"
+        style={{ maxHeight: 'min(90vh, 700px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}
-        <div className="sticky top-0 bg-white rounded-t-[2rem] px-8 pt-8 pb-4 flex items-center justify-between border-b border-slate-100">
-          <h2 className="text-2xl font-extrabold text-[#2c2f31]">새로운 팀 만들기</h2>
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-[#f5f7f9] hover:bg-[#eef1f3] transition-colors text-[#595c5e]">
+        <div className="shrink-0 px-8 pt-8 pb-4 flex items-center justify-between border-b border-slate-100 rounded-t-[2.5rem]">
+          <div>
+            <h2 className="text-[26px] font-extrabold text-[#2c2f31] tracking-tight">
+              {isEditMode ? '팀 정보 수정하기' : '새로운 팀 만들기'}
+            </h2>
+            <p className="text-sm font-semibold text-[#9a9d9f] mt-0.5">
+              {isEditMode ? '팀원들에게 보여질 정보를 업데이트하세요' : '대회에 빛나는 아이디어를 실현할 팀을 구성하세요'}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full bg-[#f5f7f9] hover:bg-[#eef1f3] transition-colors text-[#595c5e] cursor-pointer">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
+
+        {/* 폼 - 스크롤 영역 */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
 
         {/* 폼 */}
         <form onSubmit={handleSubmit((v: any) => mutation.mutate(v))} className="px-8 py-6 space-y-6">
@@ -272,11 +317,12 @@ export function CreateTeamModal({ hackathonId, open, onClose }: CreateTeamModalP
           <button
             type="submit"
             disabled={isSubmitting || mutation.isPending}
-            className="w-full py-4 bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg rounded-full hover:scale-[1.01] active:scale-95 transition-transform shadow-[0_8px_24px_rgba(0,100,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg rounded-full hover:scale-[1.01] active:scale-95 transition-transform shadow-[0_8px_24px_rgba(0,100,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {mutation.isPending ? '생성 중...' : '팀 만들기'}
+            {mutation.isPending ? '생성 중...' : isEditMode ? '수정 완료' : '팀 만들기'}
           </button>
         </form>
+        </div>
       </div>
     </div>
   )

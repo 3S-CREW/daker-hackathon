@@ -1,14 +1,24 @@
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { fetchGlobalRankings } from "@/shared/api/queries"
 import { useAuthStore } from "@/shared/store/authStore"
 
 export function RankingsPage() {
   const { user } = useAuthStore()
+  const [period, setPeriod] = useState<'all' | 'monthly' | 'weekly'>('all')
 
-  const { data: rankings = [], isLoading } = useQuery({
-    queryKey: ['global_rankings'],
-    queryFn: fetchGlobalRankings,
+  const { data: rawRankings = [], isLoading } = useQuery({
+    queryKey: ['global_rankings', period],
+    queryFn: () => fetchGlobalRankings(period),
   })
+
+  // 올림픽 방식 정렬 로직: 금 > 은 > 동 > 점수
+  const rankings = [...rawRankings].sort((a, b) => {
+    if (b.gold_medals !== a.gold_medals) return b.gold_medals - a.gold_medals
+    if (b.silver_medals !== a.silver_medals) return b.silver_medals - a.silver_medals
+    if (b.bronze_medals !== a.bronze_medals) return b.bronze_medals - a.bronze_medals
+    return b.global_total_score - a.global_total_score
+  }).map((r, idx) => ({ ...r, display_rank: idx + 1 }))
 
   const myRanking = user
     ? rankings.find((r) => r.user_id === user.id)
@@ -28,11 +38,28 @@ export function RankingsPage() {
 
   return (
     <div className="pb-24">
-      <div className="text-center mb-16 mt-8">
-        <h1 className="text-4xl md:text-[3.5rem] font-extrabold tracking-tight mb-6 text-[#2c2f31] leading-tight">
-          명예의 전당
+      <div className="text-center mb-10 mt-8">
+        <h1 className="text-4xl md:text-[3.5rem] font-extrabold tracking-tight mb-4 text-[#2c2f31] leading-tight">
+          랭킹 🏆
         </h1>
-        <p className="text-xl text-[#595c5e] font-medium">유저별 누적 상금 및 글로벌 통합 랭킹</p>
+        <p className="text-xl text-[#595c5e] font-medium mb-10">금메달 순 올림픽 방식으로 정렬됩니다</p>
+        
+        {/* 기간 필터 */}
+        <div className="inline-flex bg-[#eef1f3] rounded-2xl p-1.5 mb-2 shadow-sm border border-slate-200/50">
+          {(['all', 'monthly', 'weekly'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+                period === p 
+                ? 'bg-white text-[#2c2f31] shadow-md scale-[1.02]' 
+                : 'text-[#9a9d9f] hover:text-[#595c5e]'
+              }`}
+            >
+              {p === 'all' ? '전체 기간' : p === 'monthly' ? '이번 달' : '이번 주'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 개인 대시보드 카드 */}
@@ -52,7 +79,7 @@ export function RankingsPage() {
                 <p className="text-blue-200 font-bold mb-1 text-sm tracking-wider uppercase">My Rank</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-5xl md:text-6xl font-extrabold tracking-tighter text-white">
-                    {myRanking ? myRanking.global_rank : '-'}
+                    {myRanking ? myRanking.display_rank : '-'}
                   </span>
                   <span className="text-2xl font-bold text-blue-300">위</span>
                 </div>
@@ -70,9 +97,20 @@ export function RankingsPage() {
                 <span className="text-xl md:text-2xl font-bold text-blue-300">PTS</span>
               </div>
               {myRanking && (
-                <p className="text-sm text-blue-200/60 mt-2 font-medium">
-                  총 {myRanking.participated_count}개의 프로젝트 점수 합산
-                </p>
+                <div className="flex gap-4 mt-3">
+                  <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-lg">🥇</span>
+                    <span className="font-bold text-white">{myRanking.gold_medals}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-lg">🥈</span>
+                    <span className="font-bold text-white">{myRanking.silver_medals}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                    <span className="text-lg">🥉</span>
+                    <span className="font-bold text-white">{myRanking.bronze_medals}</span>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -134,6 +172,14 @@ export function RankingsPage() {
                   <div className="w-full bg-gradient-to-t from-[#fffcf3] to-white border-2 border-[#fde8a1] rounded-t-3xl pt-8 pb-8 px-4 text-center shadow-2xl relative -top-10 h-56 md:h-72 flex flex-col justify-end">
                     <h3 className="text-2xl font-black text-[#2c2f31] truncate w-full">{top3[0].name}</h3>
                     <p className="text-sm font-bold text-[#cd9018] mb-5">@{top3[0].github_login}</p>
+                    <div className="flex justify-center gap-4 mb-4">
+                      <div className="flex items-center gap-1">
+                        <span>🥇</span><span className="font-bold text-[#e9b824]">{top3[0].gold_medals}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[#8792a1]">
+                        <span>🥈</span><span className="font-bold">{top3[0].silver_medals}</span>
+                      </div>
+                    </div>
                     <div className="text-4xl font-extrabold text-[#e9b824] tracking-tighter">
                       {top3[0].global_total_score} <span className="text-xl">pts</span>
                     </div>
@@ -168,8 +214,8 @@ export function RankingsPage() {
                   className="flex items-center p-4 sm:p-6 bg-white rounded-[2rem] border border-slate-100/60 hover:-translate-y-1 hover:shadow-xl transition-all duration-300"
                   style={{ boxShadow: '0 10px 30px rgba(0, 81, 210, 0.03)' }}
                 >
-                  <div className={`w-16 font-extrabold text-2xl text-center ${getRankColor(entry.global_rank).split(' ')[0]}`}>
-                    {entry.global_rank}
+                  <div className={`w-16 font-extrabold text-2xl text-center ${getRankColor(entry.display_rank).split(' ')[0]}`}>
+                    {entry.display_rank}
                   </div>
 
                   <img 
@@ -182,7 +228,17 @@ export function RankingsPage() {
                     <h4 className="text-lg sm:text-xl font-bold text-[#2c2f31] truncate">
                       {entry.name}
                     </h4>
-                    <p className="text-sm font-medium text-[#9a9d9f] truncate">@{entry.github_login}</p>
+                    <div className="flex gap-3 mt-1.5">
+                      <div className="flex items-center gap-1 text-xs font-bold text-[#e9b824]">
+                        🥇 {entry.gold_medals}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-bold text-[#8792a1]">
+                        🥈 {entry.silver_medals}
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-bold text-[#cd7f32]">
+                        🥉 {entry.bronze_medals}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="text-right">

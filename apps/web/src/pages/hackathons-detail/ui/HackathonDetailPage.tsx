@@ -365,7 +365,11 @@ type DetailTabContent =
   | undefined;
 
 function isInfoContent(content: DetailTabContent): content is InfoContent {
-  return !!content && typeof content === "object" && ("rules" in content || "notice" in content);
+  return (
+    !!content &&
+    typeof content === "object" &&
+    ("rules" in content || "notice" in content)
+  );
 }
 
 function DetailContentTab({

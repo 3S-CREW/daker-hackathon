@@ -1,0 +1,28 @@
+name: Feature Request
+description: 기능 제안 템플릿
+labels: [enhancement]
+body:
+  - type: input
+    id: goal
+    attributes:
+      label: 목표
+      placeholder: 해결하고 싶은 문제/목표
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 제안 내용
+      placeholder: 무엇을 어떻게 추가하면 좋을지
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 범위/제약
+      placeholder: 포함/제외 범위, 기술 제약
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 기준(DoD)
+      placeholder: 이 이슈가 끝났다고 판단할 기준

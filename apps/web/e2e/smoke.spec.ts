@@ -3,14 +3,20 @@ import { expect, test } from "@playwright/test";
 // 시나리오 1: 메인 -> 해커톤 목록 -> 상세 페이지 진입
 test("@smoke 메인에서 해커톤 상세 페이지까지 진입", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("h1").first()).toBeVisible();
+
+  // 랜딩에서 홈 카드로 전환
+  await expect(
+    page.getByRole("button", { name: "서비스 이용하기" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "서비스 이용하기" }).click();
 
   // 해커톤 목록 이동
-  await page.click("text=해커톤 둘러보기");
+  await expect(page.getByRole("link", { name: "해커톤 탐색" })).toBeVisible();
+  await page.getByRole("link", { name: "해커톤 탐색" }).click();
   await expect(page).toHaveURL(/\/hackathons/);
 
   // 페이지 로딩 확인
-  await expect(page.locator("h1").first()).toBeVisible();
+  await expect(page.getByRole("heading").first()).toBeVisible();
 });
 
 // 시나리오 2: 해커톤 목록 페이지 렌더링
@@ -54,10 +60,15 @@ test("@smoke Rankings 페이지 - 순위 테이블 렌더링 확인", async ({ p
 
 // 시나리오 5: AI 챗봇 모달 열기
 test("@smoke AI 챗봇 플로팅 버튼 클릭 시 모달 오픈", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/hackathons");
+
+  // 상세 페이지로 진입
+  await expect(page.locator("a[href^='/hackathons/']").first()).toBeVisible();
+  await page.locator("a[href^='/hackathons/']").first().click();
+  await expect(page).toHaveURL(/\/hackathons\//);
 
   // AI 플로팅 버튼 클릭
-  const aiButton = page.getByRole("button", { name: "AI 도우미 열기" });
+  const aiButton = page.getByRole("button", { name: "AI 도우미 토글" });
   await expect(aiButton).toBeVisible();
   await aiButton.click();
 

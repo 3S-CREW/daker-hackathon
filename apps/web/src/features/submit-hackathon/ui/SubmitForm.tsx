@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSubmission, fetchTeamsByHackathon } from '@/shared/api/queries'
+import { createSubmission, fetchTeamsByHackathon, fetchMySubmissionsForHackathon } from '@/shared/api/queries'
 import { useAuthStore } from '@/shared/store/authStore'
 import { submitHackathonSchema, type SubmitHackathonFormValues } from '../model/schema'
 
@@ -20,6 +20,12 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
     queryKey: ['teams', hackathonId],
     queryFn: () => fetchTeamsByHackathon(hackathonId),
     enabled: !!hackathonId,
+  })
+
+  const { data: existingSubmissions = [], isLoading: submissionLoading } = useQuery({
+    queryKey: ['submissions', hackathonId, user?.id],
+    queryFn: () => fetchMySubmissionsForHackathon(hackathonId, teams.map(t => t.id)),
+    enabled: !!hackathonId && teams.length > 0 && !!user,
   })
 
   const {
@@ -47,10 +53,20 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rankings', hackathonId] })
+      queryClient.invalidateQueries({ queryKey: ['submissions', hackathonId, user?.id] })
       reset()
       onSuccess?.()
     },
   })
+
+  // 로딩 상태
+  if (teamsLoading || submissionLoading) {
+    return (
+      <div className="flex justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0064ff]" />
+      </div>
+    )
+  }
 
   // 비로그인 상태
   if (!user) {
@@ -62,23 +78,51 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
     )
   }
 
-  // 제출 완료 상태
-  if (mutation.isSuccess) {
+  // 제출 완료 상태 ( mutation.isSuccess || existingSubmissions.length > 0)
+  if (mutation.isSuccess || existingSubmissions.length > 0) {
+    const sub = existingSubmissions[0] || (mutation.data as any)
+    const payload = sub?.payload_json || {}
+
     return (
-      <div className="text-center py-16">
-        <div className="w-16 h-16 bg-[#eef1f3] rounded-full flex items-center justify-center mx-auto mb-6">
-          <svg className="w-8 h-8 text-[#0064ff]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+      <div className="max-w-2xl mx-auto text-center py-10">
+        <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8">
+          <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <p className="text-2xl font-extrabold text-[#2c2f31] mb-2">제출 완료!</p>
-        <p className="text-[#595c5e]">결과는 리더보드에서 확인하세요.</p>
+        <h3 className="text-3xl font-extrabold text-[#2c2f31] mb-4">제출이 완료되었습니다!</h3>
+        <p className="text-[#595c5e] mb-10 text-lg">결과는 리더보드에서 확인하실 수 있습니다.</p>
+        
+        <div className="bg-[#f5f7f9] p-8 rounded-[2rem] text-left border border-slate-100 shadow-sm">
+          <div className="grid gap-6">
+            <div>
+              <p className="text-xs font-bold text-[#9a9d9f] uppercase tracking-widest mb-2">프로젝트 링크</p>
+              <a href={payload.project_url} target="_blank" rel="noreferrer" className="text-[#0064ff] font-bold text-lg hover:underline break-all">
+                {payload.project_url}
+              </a>
+            </div>
+            {payload.demo_url && (
+              <div>
+                <p className="text-xs font-bold text-[#9a9d9f] uppercase tracking-widest mb-2">데모 링크</p>
+                <a href={payload.demo_url} target="_blank" rel="noreferrer" className="text-[#0064ff] font-bold hover:underline">
+                  {payload.demo_url}
+                </a>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-bold text-[#9a9d9f] uppercase tracking-widest mb-2">프젝트 요약</p>
+              <p className="text-[#2c2f31] font-medium leading-relaxed bg-white p-5 rounded-2xl border border-slate-100">
+                {payload.description}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-6 max-w-xl">
+    <form onSubmit={handleSubmit((v) => mutation.mutate(v))} className="space-y-10 max-w-2xl mx-auto">
       <div>
         <h3 className="text-2xl font-bold text-[#2c2f31] mb-2">결과물 제출</h3>
         <p className="text-[#595c5e]">팀 프로젝트 링크와 설명을 입력해주세요.</p>

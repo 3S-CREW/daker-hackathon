@@ -7,14 +7,14 @@ import { SubmitForm } from "@/features/submit-hackathon"
 import { CreateTeamModal } from "@/features/create-team"
 
 const TABS = [
-  { id: 'Overview', label: '소개' },
+  { id: 'Overview', label: '개요' },
   { id: 'Info', label: '공지/규칙' },
   { id: 'Eval', label: '평가 기준' },
   { id: 'Schedule', label: '일정' },
-  { id: 'Prize', label: '시상 정보' },
+  { id: 'Prize', label: '상금' },
   { id: 'Teams', label: '참가 팀' },
-  { id: 'Submit', label: '제출 안내' },
-  { id: 'Leaderboard', label: '명예의 전당' }
+  { id: 'Submit', label: '제출' },
+  { id: 'Leaderboard', label: '리더보드' }
 ] as const
 type Tab = typeof TABS[number]['id']
 
@@ -65,8 +65,17 @@ function PrizeTab({ totalPrize, teamSize }: { totalPrize?: string; teamSize?: st
   )
 }
 
+import { ExternalLinkModal } from "@/shared/ui/ExternalLinkModal"
+
 function TeamsTab({ hackathonId }: { hackathonId: string }) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [externalModalOpen, setExternalModalOpen] = useState(false)
+  const [targetUrl, setTargetUrl] = useState('')
+
+  const handleExternalClick = (url: string) => {
+    setTargetUrl(url)
+    setExternalModalOpen(true)
+  }
 
   const { data: teams = [], isLoading } = useQuery({
     queryKey: ['teams', hackathonId],
@@ -79,7 +88,7 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
         <h3 className="text-2xl font-bold text-[#2c2f31]">참가 팀</h3>
         <button
           onClick={() => setModalOpen(true)}
-          className="px-6 py-3 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-colors text-sm"
+          className="px-6 py-3 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-colors text-sm cursor-pointer"
         >
           + 팀 만들기
         </button>
@@ -97,7 +106,7 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
           <p className="text-[#595c5e] mb-6">첫 번째 팀을 만들어보세요!</p>
           <button
             onClick={() => setModalOpen(true)}
-            className="px-8 py-4 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-colors"
+            className="px-8 py-4 bg-[#0064ff] text-white font-bold rounded-full hover:bg-[#0051d2] transition-colors cursor-pointer"
           >
             팀 만들기
           </button>
@@ -125,14 +134,12 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
               <div className="ml-6 text-right shrink-0">
                 <p className="text-sm text-[#9a9d9f] font-semibold">{team.member_count}/{team.max_members}명</p>
                 {team.contact_url && (
-                  <a
-                    href={team.contact_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-block px-4 py-2 text-sm font-bold text-[#0064ff] bg-white rounded-xl hover:bg-[#eef1f3] transition-colors"
+                  <button
+                    onClick={() => handleExternalClick(team.contact_url!)}
+                    className="mt-2 inline-block px-4 py-2 text-sm font-bold text-[#0064ff] bg-white rounded-xl hover:bg-[#eef1f3] transition-colors cursor-pointer"
                   >
                     지원하기
-                  </a>
+                  </button>
                 )}
               </div>
             </div>
@@ -144,6 +151,12 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
         hackathonId={hackathonId}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
+      />
+
+      <ExternalLinkModal 
+        open={externalModalOpen}
+        url={targetUrl}
+        onClose={() => setExternalModalOpen(false)}
       />
     </div>
   )
@@ -177,7 +190,7 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
           {rankings.map((entry: RankingEntry) => (
             <div
               key={entry.id}
-              className="flex items-center p-6 bg-[#f5f7f9] rounded-2xl group hover:-translate-y-1 transition-all border border-transparent hover:border-slate-200"
+              className="flex items-center p-6 bg-[#f5f7f9] rounded-2xl group transition-all"
             >
               <span className={`w-12 text-2xl font-extrabold ${rankColor(entry.rank)}`}>
                 {entry.total_score ? entry.rank : '-'}
@@ -189,13 +202,13 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
                 </span>
                 
                 {entry.score_breakdown_json && entry.total_score && (
-                  <div className="absolute right-0 bottom-full mb-3 w-48 p-4 bg-[#2c2f31] text-white text-sm rounded-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-20 shadow-2xl">
+                  <div className="absolute right-0 bottom-full mb-3 w-56 p-4 bg-[#2c2f31] text-white text-sm rounded-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-20 shadow-2xl">
                     <p className="font-bold text-[#9a9d9f] uppercase tracking-wider mb-2 pb-2 border-b border-gray-600 text-[11px]">세부 평가 점수</p>
                     <div className="flex flex-col gap-1.5">
                       {Object.entries(entry.score_breakdown_json).map(([k, v]) => (
                         <div key={k} className="flex justify-between gap-4">
                           <span className="capitalize">{k === 'creativity' ? '창의성' : k === 'technical' ? '기술력' : k === 'business' ? '사업성' : k}</span>
-                          <span className="font-bold text-blue-300">{v as string}</span>
+                          <span className="font-bold text-blue-300">{v as string} / 30</span>
                         </div>
                       ))}
                     </div>
@@ -211,18 +224,47 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
   )
 }
 
+// 공지/규칙 기본 더미 데이터
+const DEFAULT_INFO = {
+  rules: [
+    '모든 참가자는 대회 기간 내에 결과물을 제출해야 합니다.',
+    '외부 라이브러리 및 오픈소스는 라이선스 정책을 준수하여 사용 가능합니다.',
+    '팀원은 최소 1명에서 최대 6명까지 구성할 수 있습니다.',
+    '제출물은 반드시 대회 기간 내에 개발된 신규 프로젝트여야 합니다.',
+    '표절 및 타인 결과물 무단 사용 시 즉시 실격 처리됩니다.',
+  ],
+  notice: '제출 후에는 내용 수정이 불가합니다. 최종 제출 전 반드시 확인하세요.',
+}
+
+// 평가 기준 기본 더미 데이터
+const DEFAULT_EVAL = {
+  criteria: [
+    { item: '창의성', weight: '30%', desc: '아이디어의 독창성, 문제 접근 방식의 혁신성을 평가합니다.' },
+    { item: '기술력', weight: '30%', desc: '구현 완성도, 코드 품질, 기술 스택의 적절성을 평가합니다.' },
+    { item: '사업성', weight: '25%', desc: '시장성, 비즈니스 모델의 실현 가능성, 확장성을 평가합니다.' },
+    { item: '발표력', weight: '15%', desc: '발표 구성, 시연의 명확성, 질의응답 능력을 평가합니다.' },
+  ]
+}
+
 function DetailContentTab({ title, content }: { title: string; content?: any }) {
-  if (!content) return <ComingSoonTab tab={title} />
+  // 콘텐츠 없을 때 탭별 기본 데이터 사용
+  const effectiveContent =
+    content ||
+    (title === '공지/규칙' ? DEFAULT_INFO : title === '평가 기준' ? DEFAULT_EVAL : null)
+
+  if (!effectiveContent) return <ComingSoonTab tab={title} />
+
+  const resolved = effectiveContent
 
   // 공지/규칙 (Info) 특화 렌더링
-  if (content.rules || content.notice) {
+  if (resolved.rules || resolved.notice) {
     return (
       <div className="space-y-10">
-        {content.rules && (
+        {resolved.rules && (
           <div>
             <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">🔥 참가 규정</h3>
             <ul className="space-y-3">
-              {content.rules.map((r: string, i: number) => (
+              {resolved.rules.map((r: string, i: number) => (
                 <li key={i} className="flex gap-4 text-[#595c5e] font-medium leading-relaxed bg-[#f5f7f9] p-5 rounded-2xl items-center">
                   <span className="w-6 h-6 rounded-full bg-white text-[#0064ff] font-black flex items-center justify-center text-sm shadow-sm shrink-0">{i+1}</span>
                   <span>{r}</span>
@@ -231,13 +273,13 @@ function DetailContentTab({ title, content }: { title: string; content?: any }) 
             </ul>
           </div>
         )}
-        {content.notice && (
+        {resolved.notice && (
           <div>
             <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">📢 주의 사항</h3>
             <div className="bg-red-50/50 border border-red-100 p-6 rounded-2xl">
               <p className="text-red-500 font-bold leading-relaxed flex gap-3">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-                {content.notice}
+                {resolved.notice}
               </p>
             </div>
           </div>
@@ -247,12 +289,12 @@ function DetailContentTab({ title, content }: { title: string; content?: any }) 
   }
 
   // 평가 기준 (Eval) 특화 렌더링
-  if (content.criteria) {
+  if (resolved.criteria) {
     return (
       <div>
         <h3 className="text-2xl font-bold mb-6 text-[#2c2f31]">📊 세부 평가 기준</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {content.criteria.map((c: any, i: number) => (
+          {resolved.criteria.map((c: any, i: number) => (
             <div key={i} className="p-8 border border-slate-100 shadow-[0_10px_30px_rgba(0,100,255,0.02)] bg-white rounded-[2rem] flex flex-col hover:-translate-y-1 transition-transform cursor-default">
               <div className="flex justify-between items-center mb-4">
                 <span className="font-extrabold text-[#2c2f31] text-xl">{c.item}</span>
@@ -362,8 +404,8 @@ export function HackathonDetailPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-4 px-1 transition-colors relative ${
-                activeTab === tab.id ? 'text-[#0064ff]' : 'hover:text-[#2c2f31]'
+              className={`pb-4 px-1 transition-colors relative cursor-pointer ${
+                activeTab === tab.id ? 'text-[#0064ff] pointer-events-none' : 'hover:text-[#2c2f31]'
               }`}
             >
               {tab.label}
@@ -423,26 +465,25 @@ export function HackathonDetailPage() {
         {activeTab === 'Leaderboard' && <LeaderboardTab hackathonId={hackathon.id} />}
       </div>
 
-      {/* Floating CTA */}
+      {/* Floating CTA - 우하단 소형 버튼 */}
       {hackathon.status !== 'ended' && activeTab !== 'Submit' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-sm px-6" style={{ zIndex: 45 }}>
-          <button
-            onClick={() => {
-              setActiveTab('Submit');
-              window.scrollTo({ top: 300, behavior: 'smooth' });
-            }}
-            className="w-full shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-xl py-5 rounded-full hover:scale-[1.02] transition-transform active:scale-95"
-          >
-            대회 참가하기
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setActiveTab('Submit');
+            window.scrollTo({ top: 300, behavior: 'smooth' });
+          }}
+          className="fixed bottom-24 right-8 z-40 shadow-[0_8px_24px_rgba(0,100,255,0.3)] bg-[#0064ff] hover:bg-[#0051d2] text-white font-bold text-sm px-5 py-3 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10,17 15,12 10,7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+          대회 참가하기
+        </button>
       )}
 
       {/* AI 챗봇 플로팅 버튼 */}
       <button
-        onClick={() => setChatOpen(true)}
-        className="fixed bottom-8 right-8 z-[60] w-14 h-14 rounded-full bg-gradient-to-br from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg shadow-[0_8px_30px_rgba(0,81,210,0.35)] hover:scale-110 active:scale-95 transition-transform flex items-center justify-center"
-        aria-label="AI 도우미 열기"
+        onClick={() => setChatOpen(!chatOpen)}
+        className="fixed bottom-8 right-8 z-[60] w-14 h-14 rounded-full bg-gradient-to-br from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg shadow-[0_8px_30px_rgba(0,81,210,0.35)] hover:scale-110 active:scale-95 transition-transform flex items-center justify-center cursor-pointer"
+        aria-label="AI 도우미 토글"
       >
         AI
       </button>

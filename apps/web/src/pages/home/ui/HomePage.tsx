@@ -18,7 +18,7 @@ export function HomePage() {
           <div className="w-14 h-14 bg-blue-50 text-[#0064ff] rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           </div>
-          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">해커톤 탐색</h3>
+          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">해커톤 보러가기</h3>
           <p className="text-[#595c5e] font-medium leading-relaxed">
             진행 중이거나 다가오는 해커톤을 찾아보고 새로운 도전을 시작하세요.
           </p>
@@ -30,7 +30,7 @@ export function HomePage() {
           <div className="w-14 h-14 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
-          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">팀 찾기</h3>
+          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">팀원 모집</h3>
           <p className="text-[#595c5e] font-medium leading-relaxed">
             나와 핏이 맞는 완벽한 팀원을 찾거나 흥미로운 프로젝트에 합류하세요.
           </p>
@@ -42,7 +42,7 @@ export function HomePage() {
           <div className="w-14 h-14 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
           </div>
-          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">랭킹 확인</h3>
+          <h3 className="text-2xl font-extrabold text-[#2c2f31] mb-3">랭킹 보기</h3>
           <p className="text-[#595c5e] font-medium leading-relaxed">
             영광의 리더보드를 확인하고 다른 팀들과 선의의 경쟁을 펼치세요.
           </p>

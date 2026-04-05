@@ -1,7 +1,8 @@
-import { AuthProvider } from "@/app/providers/AuthProvider";
-import { Layout } from "@/widgets/layout/Layout";
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { Toaster } from "sonner"
+import { AuthProvider } from "@/app/providers/AuthProvider"
+import { Layout } from "@/widgets/layout/Layout"
 
 const LandingPage = lazy(() =>
   import("@/pages/landing/ui/LandingPage").then((m) => ({
@@ -48,6 +49,7 @@ function PageFallback() {
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" richColors />
       <BrowserRouter>
         <Routes>
           <Route

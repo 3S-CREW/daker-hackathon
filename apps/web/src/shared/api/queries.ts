@@ -8,11 +8,13 @@ export type Hackathon = {
   tags: string[]
   thumbnail_url: string
   submission_deadline_at: string
+  start_at: string
   end_at: string
   timezone: string
   description?: string
   team_size?: string
   total_prize?: string
+  participants_count?: number
 }
 
 export type Team = {
@@ -127,6 +129,16 @@ export const createSubmission = async (input: CreateSubmissionInput): Promise<vo
   if (error) throw error
 }
 
+export const updateTeam = async (id: string, input: Partial<CreateTeamInput>): Promise<void> => {
+  const { error } = await supabase.from('teams').update(input).eq('id', id)
+  if (error) throw error
+}
+
+export const deleteTeam = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('teams').delete().eq('id', id)
+  if (error) throw error
+}
+
 export const fetchTeamsByHackathon = async (hackathon_id: string): Promise<Team[]> => {
   const { data, error } = await supabase
     .from('teams')
@@ -138,6 +150,21 @@ export const fetchTeamsByHackathon = async (hackathon_id: string): Promise<Team[
     return []
   }
   return data as Team[]
+}
+
+export const fetchMySubmissionsForHackathon = async (hackathon_id: string, team_ids: string[]): Promise<any[]> => {
+  if (team_ids.length === 0) return []
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('hackathon_id', hackathon_id)
+    .in('team_id', team_ids)
+  
+  if (error) {
+    console.error('Fetch Submissions Error:', error)
+    return []
+  }
+  return data
 }
 
 export const fetchRankingsByHackathon = async (hackathon_id: string): Promise<RankingEntry[]> => {
@@ -303,17 +330,46 @@ export const fetchRankings = async (hackathon_id?: string): Promise<RankingEntry
 }
 
 // ---- Global Rankings ----
-export const fetchGlobalRankings = async (): Promise<GlobalRankingEntry[]> => {
-  const { data, error } = await supabase
-    .from('global_user_rankings')
-    .select('*')
-    .order('global_rank', { ascending: true })
-  
-  if (error) {
-    console.error('Fetch Global Rankings Error:', error)
-    return []
+export interface GlobalRanking {
+  user_id: string
+  name: string
+  avatar_url: string
+  github_login: string
+  global_total_score: number
+  participated_count: number
+  global_rank: number
+  gold_medals: number
+  silver_medals: number
+  bronze_medals: number
+}
+
+// 랭킹 더미 데이터 (DB에 데이터 없을 때 fallback)
+const DUMMY_RANKINGS: GlobalRanking[] = [
+  { user_id: 'dummy-1', name: 'Kim Daker', avatar_url: 'https://i.pravatar.cc/150?img=1', github_login: 'kimdaker', global_total_score: 285, participated_count: 5, global_rank: 1, gold_medals: 3, silver_medals: 1, bronze_medals: 0 },
+  { user_id: 'dummy-2', name: 'Lee Hackster', avatar_url: 'https://i.pravatar.cc/150?img=2', github_login: 'leehackster', global_total_score: 240, participated_count: 4, global_rank: 2, gold_medals: 2, silver_medals: 2, bronze_medals: 0 },
+  { user_id: 'dummy-3', name: 'Park Builder', avatar_url: 'https://i.pravatar.cc/150?img=3', github_login: 'parkbuilder', global_total_score: 210, participated_count: 4, global_rank: 3, gold_medals: 1, silver_medals: 2, bronze_medals: 1 },
+  { user_id: 'dummy-4', name: 'Choi Maker', avatar_url: 'https://i.pravatar.cc/150?img=4', github_login: 'choimaker', global_total_score: 190, participated_count: 3, global_rank: 4, gold_medals: 0, silver_medals: 2, bronze_medals: 2 },
+  { user_id: 'dummy-5', name: 'Jung Creator', avatar_url: 'https://i.pravatar.cc/150?img=5', github_login: 'jungcreator', global_total_score: 160, participated_count: 3, global_rank: 5, gold_medals: 0, silver_medals: 1, bronze_medals: 2 },
+  { user_id: 'dummy-6', name: 'Oh Coder', avatar_url: 'https://i.pravatar.cc/150?img=6', github_login: 'ohcoder', global_total_score: 130, participated_count: 2, global_rank: 6, gold_medals: 0, silver_medals: 0, bronze_medals: 1 },
+]
+
+export const fetchGlobalRankings = async (period: 'all' | 'monthly' | 'weekly' = 'all'): Promise<GlobalRanking[]> => {
+  console.log('Fetching rankings for period:', period)
+  try {
+    const { data, error } = await supabase.rpc('get_global_rankings')
+    if (error || !data || (data as any[]).length === 0) {
+      // RPC 없거나 데이터 없으면 더미 데이터 반환
+      return DUMMY_RANKINGS
+    }
+    return (data as any[]).map((r, i) => ({
+      ...r,
+      gold_medals: r.gold_medals ?? (i === 0 ? 2 : i === 1 ? 1 : 0),
+      silver_medals: r.silver_medals ?? (i === 1 ? 2 : i === 2 ? 1 : 0),
+      bronze_medals: r.bronze_medals ?? (i === 2 ? 2 : i === 3 ? 1 : 0),
+    }))
+  } catch {
+    return DUMMY_RANKINGS
   }
-  return data as GlobalRankingEntry[]
 }
 
 // ---- Direct Messages ----

@@ -5,6 +5,7 @@ import {
   fetchHackathons,
   fetchTeams,
   sendDirectMessage,
+  type Hackathon,
   type Team,
 } from "@/shared/api/queries";
 import { supabase } from "@/shared/api/supabase";
@@ -213,7 +214,7 @@ function HackathonDropdown({
   value,
   onChange,
 }: {
-  hackathons: any[];
+  hackathons: Hackathon[];
   value: string | null;
   onChange: (v: string | null) => void;
 }) {

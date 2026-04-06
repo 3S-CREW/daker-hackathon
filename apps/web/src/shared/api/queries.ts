@@ -501,7 +501,19 @@ export const fetchGlobalRankings = async (
       // RPC 없거나 데이터 없으면 더미 데이터 반환
       return DUMMY_RANKINGS;
     }
-    return rows.map((r, i) => ({
+    return (rows as {
+      user_id: string | null;
+      name: string | null;
+      avatar_url: string | null;
+      github_login: string | null;
+      global_total_score: number | null;
+      participated_count: number | null;
+      global_rank: number | null;
+      gold_medals: number | null;
+      silver_medals: number | null;
+      bronze_medals: number | null;
+      total_prize_money: number | null;
+    }[]).map((r, i) => ({
       user_id: r.user_id ?? `unknown-${i + 1}`,
       name: r.name ?? `User ${i + 1}`,
       avatar_url: r.avatar_url ?? "https://github.com/ghost.png",
@@ -512,7 +524,7 @@ export const fetchGlobalRankings = async (
       gold_medals: r.gold_medals ?? (i === 0 ? 2 : i === 1 ? 1 : 0),
       silver_medals: r.silver_medals ?? (i === 1 ? 2 : i === 2 ? 1 : 0),
       bronze_medals: r.bronze_medals ?? (i === 2 ? 2 : i === 3 ? 1 : 0),
-      total_prize_money: (r as any).total_prize_money ?? 0,
+      total_prize_money: r.total_prize_money ?? 0,
     }));
   } catch {
     return DUMMY_RANKINGS;

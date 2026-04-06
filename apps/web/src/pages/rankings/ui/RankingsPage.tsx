@@ -6,19 +6,44 @@ import { useAuthStore } from "@/shared/store/authStore"
 export function RankingsPage() {
   const { user } = useAuthStore()
   const [period, setPeriod] = useState<'all' | 'monthly' | 'weekly'>('all')
+  const [rankingType, setRankingType] = useState<'points' | 'participation' | 'medals' | 'prize'>('points')
 
   const { data: rawRankings = [], isLoading } = useQuery({
     queryKey: ['global_rankings', period],
     queryFn: () => fetchGlobalRankings(period),
   })
 
-  // 올림픽 방식 정렬 로직: 금 > 은 > 동 > 점수
+  // 정렬 로직
   const rankings = [...rawRankings].sort((a, b) => {
-    if (b.gold_medals !== a.gold_medals) return b.gold_medals - a.gold_medals
-    if (b.silver_medals !== a.silver_medals) return b.silver_medals - a.silver_medals
-    if (b.bronze_medals !== a.bronze_medals) return b.bronze_medals - a.bronze_medals
-    return b.global_total_score - a.global_total_score
+    if (rankingType === 'medals') {
+      if (b.gold_medals !== a.gold_medals) return b.gold_medals - a.gold_medals
+      if (b.silver_medals !== a.silver_medals) return b.silver_medals - a.silver_medals
+      if (b.bronze_medals !== a.bronze_medals) return b.bronze_medals - a.bronze_medals
+      return b.global_total_score - a.global_total_score
+    } else if (rankingType === 'participation') {
+      return b.participated_count - a.participated_count
+    } else if (rankingType === 'prize') {
+      return b.total_prize_money - a.total_prize_money
+    } else {
+      // points (default)
+      return b.global_total_score - a.global_total_score
+    }
   }).map((r, idx) => ({ ...r, display_rank: idx + 1 }))
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' })
+      .format(price)
+      .replace('₩', '') + '원';
+  }
+
+  const getMetricValue = (entry: any) => {
+    switch(rankingType) {
+      case 'participation': return `${entry.participated_count}회`
+      case 'prize': return formatPrice(entry.total_prize_money)
+      case 'medals': return `${entry.gold_medals}🥇`
+      default: return `${entry.global_total_score}pts`
+    }
+  }
 
   const myRanking = user
     ? rankings.find((r) => r.user_id === user.id)
@@ -57,6 +82,23 @@ export function RankingsPage() {
               }`}
             >
               {p === 'all' ? '전체 기간' : p === 'monthly' ? '이번 달' : '이번 주'}
+            </button>
+          ))}
+        </div>
+
+        {/* 랭킹 기준 필터 */}
+        <div className="flex justify-center gap-3 mt-4">
+          {(['points', 'participation', 'medals', 'prize'] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => setRankingType(type)}
+              className={`px-5 py-2 rounded-full font-bold text-xs transition-all cursor-pointer border ${
+                rankingType === type
+                ? 'bg-[#0064ff] text-white border-[#0064ff] shadow-md'
+                : 'bg-white text-[#595c5e] border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {type === 'points' ? '종합 점수' : type === 'participation' ? '참여 횟수' : type === 'medals' ? '메달 기록' : '총 상금'}
             </button>
           ))}
         </div>
@@ -156,7 +198,7 @@ export function RankingsPage() {
                     <h3 className="text-xl font-bold text-[#2c2f31] truncate w-full">{top3[1].name}</h3>
                     <p className="text-sm font-semibold text-[#8792a1] mb-4">@{top3[1].github_login}</p>
                     <div className="text-3xl font-extrabold text-[#8792a1] tracking-tighter">
-                      {top3[1].global_total_score} <span className="text-lg">pts</span>
+                      {rankingType === 'prize' ? formatPrice(top3[1].total_prize_money) : rankingType === 'participation' ? `${top3[1].participated_count}회` : `${top3[1].global_total_score} pts`}
                     </div>
                   </div>
                 </div>
@@ -181,7 +223,7 @@ export function RankingsPage() {
                       </div>
                     </div>
                     <div className="text-4xl font-extrabold text-[#e9b824] tracking-tighter">
-                      {top3[0].global_total_score} <span className="text-xl">pts</span>
+                      {rankingType === 'prize' ? formatPrice(top3[0].total_prize_money) : rankingType === 'participation' ? `${top3[0].participated_count}회` : `${top3[0].global_total_score} pts`}
                     </div>
                   </div>
                 </div>
@@ -197,7 +239,7 @@ export function RankingsPage() {
                     <h3 className="text-lg font-bold text-[#2c2f31] truncate w-full">{top3[2].name}</h3>
                     <p className="text-sm font-semibold text-[#cd7f32] mb-3">@{top3[2].github_login}</p>
                     <div className="text-2xl font-extrabold text-[#cd7f32] tracking-tighter">
-                      {top3[2].global_total_score} <span className="text-base">pts</span>
+                      {rankingType === 'prize' ? formatPrice(top3[2].total_prize_money) : rankingType === 'participation' ? `${top3[2].participated_count}회` : `${top3[2].global_total_score} pts`}
                     </div>
                   </div>
                 </div>
@@ -243,10 +285,10 @@ export function RankingsPage() {
 
                   <div className="text-right">
                     <div className="text-xs sm:text-sm font-bold text-[#9a9d9f] uppercase tracking-wider mb-1">
-                      Score
+                      {rankingType === 'prize' ? 'Prize' : rankingType === 'participation' ? 'Count' : 'Score'}
                     </div>
-                    <div className="text-xl sm:text-2xl font-extrabold text-[#0064ff] tracking-tighter">
-                      {entry.global_total_score}
+                    <div className={`text-xl sm:text-2xl font-extrabold tracking-tighter ${rankingType === 'prize' ? 'text-[#e9b824]' : 'text-[#0064ff]'}`}>
+                      {getMetricValue(entry)}
                     </div>
                   </div>
                 </div>

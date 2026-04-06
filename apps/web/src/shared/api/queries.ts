@@ -405,6 +405,7 @@ export interface GlobalRanking {
   gold_medals: number;
   silver_medals: number;
   bronze_medals: number;
+  total_prize_money: number;
 }
 
 // 랭킹 더미 데이터 (DB에 데이터 없을 때 fallback)
@@ -420,6 +421,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 3,
     silver_medals: 1,
     bronze_medals: 0,
+    total_prize_money: 1500000,
   },
   {
     user_id: "dummy-2",
@@ -432,6 +434,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 2,
     silver_medals: 2,
     bronze_medals: 0,
+    total_prize_money: 800000,
   },
   {
     user_id: "dummy-3",
@@ -444,6 +447,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 1,
     silver_medals: 2,
     bronze_medals: 1,
+    total_prize_money: 500000,
   },
   {
     user_id: "dummy-4",
@@ -456,6 +460,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 0,
     silver_medals: 2,
     bronze_medals: 2,
+    total_prize_money: 300000,
   },
   {
     user_id: "dummy-5",
@@ -468,6 +473,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 0,
     silver_medals: 1,
     bronze_medals: 2,
+    total_prize_money: 100000,
   },
   {
     user_id: "dummy-6",
@@ -480,6 +486,7 @@ const DUMMY_RANKINGS: GlobalRanking[] = [
     gold_medals: 0,
     silver_medals: 0,
     bronze_medals: 1,
+    total_prize_money: 50000,
   },
 ];
 
@@ -505,6 +512,7 @@ export const fetchGlobalRankings = async (
       gold_medals: r.gold_medals ?? (i === 0 ? 2 : i === 1 ? 1 : 0),
       silver_medals: r.silver_medals ?? (i === 1 ? 2 : i === 2 ? 1 : 0),
       bronze_medals: r.bronze_medals ?? (i === 2 ? 2 : i === 3 ? 1 : 0),
+      total_prize_money: (r as any).total_prize_money ?? 0,
     }));
   } catch {
     return DUMMY_RANKINGS;

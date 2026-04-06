@@ -6,43 +6,24 @@ import { useAuthStore } from "@/shared/store/authStore"
 export function RankingsPage() {
   const { user } = useAuthStore()
   const [period, setPeriod] = useState<'all' | 'monthly' | 'weekly'>('all')
-  const [rankingType, setRankingType] = useState<'points' | 'participation' | 'medals' | 'prize'>('points')
 
   const { data: rawRankings = [], isLoading } = useQuery({
     queryKey: ['global_rankings', period],
     queryFn: () => fetchGlobalRankings(period),
   })
 
-  // 정렬 로직
+  // 정렬 로직 (메달 기준 올림픽 방식)
   const rankings = [...rawRankings].sort((a, b) => {
-    if (rankingType === 'medals') {
-      if (b.gold_medals !== a.gold_medals) return b.gold_medals - a.gold_medals
-      if (b.silver_medals !== a.silver_medals) return b.silver_medals - a.silver_medals
-      if (b.bronze_medals !== a.bronze_medals) return b.bronze_medals - a.bronze_medals
-      return b.global_total_score - a.global_total_score
-    } else if (rankingType === 'participation') {
-      return b.participated_count - a.participated_count
-    } else if (rankingType === 'prize') {
-      return b.total_prize_money - a.total_prize_money
-    } else {
-      // points (default)
-      return b.global_total_score - a.global_total_score
-    }
+    if (b.gold_medals !== a.gold_medals) return b.gold_medals - a.gold_medals
+    if (b.silver_medals !== a.silver_medals) return b.silver_medals - a.silver_medals
+    if (b.bronze_medals !== a.bronze_medals) return b.bronze_medals - a.bronze_medals
+    return b.total_prize_money - a.total_prize_money
   }).map((r, idx) => ({ ...r, display_rank: idx + 1 }))
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' })
       .format(price)
       .replace('₩', '') + '원';
-  }
-
-  const getMetricValue = (entry: any) => {
-    switch(rankingType) {
-      case 'participation': return `${entry.participated_count}회`
-      case 'prize': return formatPrice(entry.total_prize_money)
-      case 'medals': return `${entry.gold_medals}🥇`
-      default: return `${entry.global_total_score}pts`
-    }
   }
 
   const myRanking = user
@@ -85,23 +66,6 @@ export function RankingsPage() {
             </button>
           ))}
         </div>
-
-        {/* 랭킹 기준 필터 */}
-        <div className="flex justify-center gap-3 mt-4">
-          {(['points', 'participation', 'medals', 'prize'] as const).map((type) => (
-            <button
-              key={type}
-              onClick={() => setRankingType(type)}
-              className={`px-5 py-2 rounded-full font-bold text-xs transition-all cursor-pointer border ${
-                rankingType === type
-                ? 'bg-[#0064ff] text-white border-[#0064ff] shadow-md'
-                : 'bg-white text-[#595c5e] border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              {type === 'points' ? '종합 점수' : type === 'participation' ? '참여 횟수' : type === 'medals' ? '메달 기록' : '총 상금'}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* 개인 대시보드 카드 */}
@@ -131,12 +95,11 @@ export function RankingsPage() {
             <div className="hidden md:block w-[1px] h-20 bg-white/10" />
 
             <div>
-               <p className="text-blue-200 font-bold mb-1 text-sm tracking-wider uppercase">Total Score</p>
+               <p className="text-blue-200 font-bold mb-1 text-sm tracking-wider uppercase">Total Prize Money</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl md:text-6xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#80bfff] to-[#ffffff]">
-                  {myRanking ? myRanking.global_total_score : '-'}
+                <span className="text-4xl md:text-5xl font-extrabold tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[#ffd700] to-[#ffffff]">
+                  {myRanking ? formatPrice(myRanking.total_prize_money) : '-'}
                 </span>
-                <span className="text-xl md:text-2xl font-bold text-blue-300">PTS</span>
               </div>
               {myRanking && (
                 <div className="flex gap-4 mt-3">
@@ -197,8 +160,8 @@ export function RankingsPage() {
                   <div className="w-full bg-gradient-to-t from-[#f5f7f9] to-white border border-[#e2e8f0] rounded-t-3xl pt-8 pb-6 px-4 text-center shadow-lg relative -top-10 h-48 md:h-56 flex flex-col justify-end">
                     <h3 className="text-xl font-bold text-[#2c2f31] truncate w-full">{top3[1].name}</h3>
                     <p className="text-sm font-semibold text-[#8792a1] mb-4">@{top3[1].github_login}</p>
-                    <div className="text-3xl font-extrabold text-[#8792a1] tracking-tighter">
-                      {rankingType === 'prize' ? formatPrice(top3[1].total_prize_money) : rankingType === 'participation' ? `${top3[1].participated_count}회` : `${top3[1].global_total_score} pts`}
+                    <div className="text-2xl font-extrabold text-[#8792a1] tracking-tighter">
+                      {formatPrice(top3[1].total_prize_money)}
                     </div>
                   </div>
                 </div>
@@ -222,8 +185,8 @@ export function RankingsPage() {
                         <span>🥈</span><span className="font-bold">{top3[0].silver_medals}</span>
                       </div>
                     </div>
-                    <div className="text-4xl font-extrabold text-[#e9b824] tracking-tighter">
-                      {rankingType === 'prize' ? formatPrice(top3[0].total_prize_money) : rankingType === 'participation' ? `${top3[0].participated_count}회` : `${top3[0].global_total_score} pts`}
+                    <div className="text-3xl font-extrabold text-[#e9b824] tracking-tighter">
+                      {formatPrice(top3[0].total_prize_money)}
                     </div>
                   </div>
                 </div>
@@ -238,8 +201,8 @@ export function RankingsPage() {
                   <div className="w-full bg-gradient-to-t from-[#fff7ef] to-white border border-[#f5d0b5] rounded-t-3xl pt-8 pb-6 px-4 text-center shadow-lg relative -top-10 h-44 md:h-48 flex flex-col justify-end">
                     <h3 className="text-lg font-bold text-[#2c2f31] truncate w-full">{top3[2].name}</h3>
                     <p className="text-sm font-semibold text-[#cd7f32] mb-3">@{top3[2].github_login}</p>
-                    <div className="text-2xl font-extrabold text-[#cd7f32] tracking-tighter">
-                      {rankingType === 'prize' ? formatPrice(top3[2].total_prize_money) : rankingType === 'participation' ? `${top3[2].participated_count}회` : `${top3[2].global_total_score} pts`}
+                    <div className="text-xl font-extrabold text-[#cd7f32] tracking-tighter">
+                      {formatPrice(top3[2].total_prize_money)}
                     </div>
                   </div>
                 </div>
@@ -285,10 +248,10 @@ export function RankingsPage() {
 
                   <div className="text-right">
                     <div className="text-xs sm:text-sm font-bold text-[#9a9d9f] uppercase tracking-wider mb-1">
-                      {rankingType === 'prize' ? 'Prize' : rankingType === 'participation' ? 'Count' : 'Score'}
+                      Total Prize
                     </div>
-                    <div className={`text-xl sm:text-2xl font-extrabold tracking-tighter ${rankingType === 'prize' ? 'text-[#e9b824]' : 'text-[#0064ff]'}`}>
-                      {getMetricValue(entry)}
+                    <div className="text-xl sm:text-2xl font-extrabold text-[#e9b824] tracking-tighter">
+                      {formatPrice(entry.total_prize_money)}
                     </div>
                   </div>
                 </div>

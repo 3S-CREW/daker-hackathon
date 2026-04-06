@@ -195,7 +195,6 @@ export function CreateTeamModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[#2c2f31]/60 backdrop-blur-sm p-4"
-      onClick={onClose}
     >
       <div
         className="bg-white rounded-[2.5rem] w-full max-w-xl flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-300"
@@ -430,7 +429,7 @@ export function CreateTeamModal({
                 className={`w-12 h-6 rounded-full transition-colors relative ${recruiting ? "bg-[#0064ff]" : "bg-slate-300"}`}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${recruiting ? "translate-x-6" : "translate-x-0.5"}`}
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${recruiting ? "translate-x-6" : "translate-x-0"}`}
                 />
               </button>
             </div>

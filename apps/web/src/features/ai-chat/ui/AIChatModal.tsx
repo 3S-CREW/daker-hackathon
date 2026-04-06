@@ -88,16 +88,18 @@ export function AIChatModal({ open, onClose, hackathonId }: AIChatModalProps) {
   if (!shouldRender) return null
 
   return (
-    <div className={`fixed inset-0 z-[1000] flex items-end sm:items-center justify-center sm:justify-end sm:p-6 sm:pb-24 transition-opacity duration-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] sm:hidden"
-        onClick={onClose}
-      />
+    <div className={`fixed bottom-24 right-8 z-[50] flex flex-col items-end transition-opacity duration-300 pointer-events-none ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+      {/* Backdrop - Only on mobile style */}
+      {isVisible && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] sm:hidden z-[-1] pointer-events-auto"
+          onClick={onClose}
+        />
+      )}
 
       {/* Modal Container */}
       <div 
-        className={`relative w-full sm:w-[420px] h-[75vh] sm:h-[620px] bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_30px_90px_rgba(0,81,210,0.25)] transition-all duration-500 ease-out border border-slate-100 ${isVisible ? 'translate-y-0 scale-100' : 'translate-y-12 scale-95'}`}
+        className={`relative w-[calc(100vw-2rem)] sm:w-[420px] h-[75vh] sm:h-[620px] bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] flex flex-col overflow-hidden shadow-[0_30px_90px_rgba(0,81,210,0.25)] transition-all duration-500 ease-out border border-slate-100 pointer-events-auto ${isVisible ? 'translate-y-0 scale-100' : 'translate-y-12 scale-95'}`}
       >
 
         {/* Header */}

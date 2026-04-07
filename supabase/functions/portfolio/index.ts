@@ -29,7 +29,30 @@ serve(async (req) => {
 
     const openaiKey = Deno.env.get('OPENAI_API_KEY')!
 
-    // GitHub README 조회 (profile README: username/username)
+    // 1. GitHub 유저 기본 정보 조회
+    const userRes = await fetch(
+      `https://api.github.com/users/${username}`,
+      { headers: { 'User-Agent': 'daker-hackathon' } }
+    )
+    if (!userRes.ok) {
+      return new Response(
+        JSON.stringify({ error: `GitHub 유저 '${username}'를 찾을 수 없습니다.` }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+    const userProfile = await userRes.json()
+
+    // 2. 주요 저장소 조회 (별순 정렬, 상위 6개)
+    const reposRes = await fetch(
+      `https://api.github.com/users/${username}/repos?sort=stars&per_page=6`,
+      { headers: { 'User-Agent': 'daker-hackathon' } }
+    )
+    let reposData = []
+    if (reposRes.ok) {
+      reposData = await reposRes.json()
+    }
+
+    // 3. GitHub README 조회 (profile README: username/username)
     const readmeRes = await fetch(
       `https://api.github.com/repos/${username}/${username}/contents/README.md`,
       { headers: { 'Accept': 'application/vnd.github.v3.raw', 'User-Agent': 'daker-hackathon' } }
@@ -38,43 +61,53 @@ serve(async (req) => {
     let readmeContent = ''
     if (readmeRes.ok) {
       readmeContent = await readmeRes.text()
-    } else {
-      // profile README 없으면 일반 유저 정보로 대체
-      const userRes = await fetch(
-        `https://api.github.com/users/${username}`,
-        { headers: { 'User-Agent': 'daker-hackathon' } }
-      )
-      if (!userRes.ok) {
-        return new Response(
-          JSON.stringify({ error: `GitHub 유저 '${username}'를 찾을 수 없습니다.` }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-      const user = await userRes.json()
-      readmeContent = `이름: ${user.name || username}
-바이오: ${user.bio || '없음'}
-팔로워: ${user.followers}명
-공개 저장소: ${user.public_repos}개
-위치: ${user.location || '없음'}
-블로그: ${user.blog || '없음'}`
     }
 
-    const prompt = `아래는 GitHub 유저 ${username}의 프로필 README입니다.
-이 내용을 분석하여 깔끔하고 현대적인 HTML 포트폴리오 페이지를 생성해 주세요.
+    // AI에게 제공할 데이터 구성
+    const githubData = {
+      profile: {
+        name: userProfile.name || username,
+        bio: userProfile.bio,
+        avatar_url: userProfile.avatar_url,
+        blog: userProfile.blog,
+        location: userProfile.location,
+        followers: userProfile.followers,
+        public_repos: userProfile.public_repos,
+        html_url: userProfile.html_url
+      },
+      top_repositories: reposData.map((r: any) => ({
+        name: r.name,
+        description: r.description,
+        language: r.language,
+        stargazers_count: r.stargazers_count,
+        html_url: r.html_url
+      })),
+      readme_summary: readmeContent.slice(0, 2000) // 너무 길면 자름
+    }
 
+    const prompt = `아래 GitHub 데이터를 바탕으로 전문가 수준의 개인 포트폴리오 HTML 페이지를 생성해 주세요.
+
+데이터: ${JSON.stringify(githubData)}
 선택된 테마: ${theme} (light: 깔끔한 화이트, dark: 세련된 다크 모드, gradient: 화려한 그라데이션)
 
 요구사항:
-- 단일 HTML 파일 (인라인 CSS 포함, 외부 라이브러리 없음)
-- 토스뱅크 스타일: 흰 배경, 파란 강조색(#0064ff), 둥근 모서리, 넓은 여백
-- Pretendard 폰트 사용 (Google Fonts에서 로드)
-- 섹션: 소개, 기술 스택, 프로젝트, 연락처
-- 모바일 반응형 (max-width: 800px 중앙 정렬)
-- README에서 추출 가능한 정보만 포함 (없는 정보는 섹션 생략)
-- 완전한 HTML 문서만 반환 (설명 텍스트 없이, \`\`\`html 코드 블록 없이)
+- 단일 HTML 파일로 작성 (인라인 CSS 포함, 외부 자바스크립트 최소화)
+- 디자인 스타일: 토스(Toss) 및 애플(Apple) 스타일의 극도로 깔끔하고 프리미엄한 느낌
+  - 넓은 여백, 부드러운 그림자(Soft Shadows), 둥근 모서리(24px 이상)
+  - 굵고 간결한 타이포그래피 (Pretendard 폰트 사용)
+  - 인터랙티브한 호버 효과 포함
+- 구성 섹션 (필수):
+  1. Hero: 아바타 이미지, 이름, 짧은 자기소개, 링크(GitHub, 블로그 등)
+  2. About: README 기반으로 유저의 전문성 요약
+  3. Projects: 제공된 상위 저장소들을 카드 형태로 시각화 (별 수, 주요 언어 포함)
+  4. GitHub Stats: 팔로워 수, 저장소 수 등 유저의 현재 영향력을 수치화하여 시각적으로 표현
+  5. Contact: 유저와 소통할 수 있는 정보 및 소셜 링크
+- 모바일 반응형 지원 필수
+- 별도의 이미지나 placeholder 대신 제공된 아바타 URL을 적극 사용하세요.
+- 프로젝트 링크는 제공된 GitHub URL을 연결해 주세요.
+- 설명 텍스트 없이 완벽한 HTML 문서 전체 코드만 반환하세요 (\`\`\`html 마크다운 제외).
 
-README 내용:
-${readmeContent.slice(0, 3000)}`
+사용자 언어: 한국어 (내용은 한국어로 작성)`
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -86,7 +119,7 @@ ${readmeContent.slice(0, 3000)}`
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 3000,
-        temperature: 0.5,
+        temperature: 0.7, // 창의성과 구조의 밸런스
       }),
     })
 
@@ -115,3 +148,4 @@ ${readmeContent.slice(0, 3000)}`
     )
   }
 })
+

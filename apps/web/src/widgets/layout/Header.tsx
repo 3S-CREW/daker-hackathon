@@ -11,7 +11,9 @@ export function Header() {
     await supabase.auth.signInWithOAuth({ 
       provider: 'github',
       options: { 
-        redirectTo: window.location.origin,
+        // 로그인 후 /hackathons 로 직접 이동 → LandingPage phase 초기화 문제 방지
+        // 배포 시에도 정확한 URL이 필요하므로 origin + /hackathons 사용
+        redirectTo: `${window.location.origin}/hackathons`,
         queryParams: { prompt: 'select_account' }
       }
     })

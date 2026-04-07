@@ -45,10 +45,13 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
     handleSubmit,
     reset,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<SubmitHackathonFormValues>({
     resolver: zodResolver(submitHackathonSchema),
   });
+
+  const projectUrlValue = watch("project_url");
 
   const mutation = useMutation({
     mutationFn: (values: SubmitHackathonFormValues) =>
@@ -64,10 +67,9 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
         created_by: user!.id,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rankings", hackathonId] });
-      queryClient.invalidateQueries({
-        queryKey: ["submissions", hackathonId, user?.id],
-      });
+      queryClient.invalidateQueries({ queryKey: ["rankings"] });
+      queryClient.invalidateQueries({ queryKey: ["submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["teams"] });
       reset();
       onSuccess?.();
     },
@@ -312,13 +314,36 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className="text-[#9a9d9f]"
+                className={projectUrlValue?.startsWith("[File]") ? "text-[#0064ff]" : "text-[#9a9d9f]"}
               >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
+                {projectUrlValue?.startsWith("[File]") ? (
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6" />
+                ) : (
+                  <>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </>
+                )}
               </svg>
-              <span>클릭하거나 파일을 여기로 드래그하세요</span>
+              <span className={projectUrlValue?.startsWith("[File]") ? "text-[#0064ff] font-bold" : ""}>
+                {projectUrlValue?.startsWith("[File]") 
+                  ? projectUrlValue.replace("[File] ", "") 
+                  : "클릭하거나 파일을 여기로 드래그하세요"}
+              </span>
+              {projectUrlValue?.startsWith("[File]") && (
+                <button 
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setValue("project_url", "");
+                  }}
+                  className="mt-2 text-xs text-red-500 hover:underline cursor-pointer"
+                >
+                  파일 제거
+                </button>
+              )}
             </div>
             {/* hidden input for validation */}
             <input type="hidden" {...register("project_url")} />
@@ -396,7 +421,7 @@ export function SubmitForm({ hackathonId, onSuccess }: SubmitFormProps) {
       <button
         type="submit"
         disabled={mutation.isPending}
-        className="w-full py-4 bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg rounded-full hover:scale-[1.01] active:scale-95 transition-transform shadow-[0_8px_24px_rgba(0,100,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-4 bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-bold text-lg rounded-full hover:scale-[1.01] active:scale-95 transition-transform shadow-[0_8px_24px_rgba(0,100,255,0.25)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
       >
         {mutation.isPending ? "제출 중..." : "대회 결과물 제출하기"}
       </button>

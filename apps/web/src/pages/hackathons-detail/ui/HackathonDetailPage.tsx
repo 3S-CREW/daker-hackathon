@@ -6,10 +6,12 @@ import {
   fetchHackathonDetails,
   fetchRankingsByHackathon,
   fetchTeamsByHackathon,
+  deleteTeam,
   type RankingEntry,
   type Team,
 } from "@/shared/api/queries";
-import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/shared/store/authStore";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -97,13 +99,35 @@ function PrizeTab({
 import { ExternalLinkModal } from "@/shared/ui/ExternalLinkModal";
 
 function TeamsTab({ hackathonId }: { hackathonId: string }) {
+  const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Team | undefined>(undefined);
   const [externalModalOpen, setExternalModalOpen] = useState(false);
   const [targetUrl, setTargetUrl] = useState("");
 
   const handleExternalClick = (url: string) => {
     setTargetUrl(url);
     setExternalModalOpen(true);
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setSelectedTeam(team);
+    setModalOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTeam,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["teams", hackathonId] });
+      alert("팀이 삭제되었습니다.");
+    },
+  });
+
+  const handleDeleteTeam = (id: string) => {
+    if (confirm("정말로 팀을 삭제하시겠습니까?")) {
+      deleteMutation.mutate(id);
+    }
   };
 
   const { data: teams = [], isLoading } = useQuery({
@@ -181,14 +205,32 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
                 <p className="text-sm text-[#9a9d9f] font-semibold">
                   {team.member_count}/{team.max_members}명
                 </p>
-                {team.contact_url && (
-                  <button
-                    onClick={() => handleExternalClick(team.contact_url!)}
-                    className="mt-2 inline-block px-4 py-2 text-sm font-bold text-[#0064ff] bg-white rounded-xl hover:bg-[#eef1f3] transition-colors cursor-pointer"
-                  >
-                    지원하기
-                  </button>
-                )}
+                <div className="flex gap-2 mt-2 justify-end">
+                  {team.created_by === user?.id && (
+                    <>
+                      <button
+                        onClick={() => handleEditTeam(team)}
+                        className="px-3 py-1.5 text-xs font-bold text-[#595c5e] bg-white rounded-lg hover:bg-[#eef1f3] transition-colors border border-slate-100 cursor-pointer"
+                      >
+                        수정
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTeam(team.id)}
+                        className="px-3 py-1.5 text-xs font-bold text-red-500 bg-white rounded-lg hover:bg-red-50 transition-colors border border-slate-100 cursor-pointer"
+                      >
+                        삭제
+                      </button>
+                    </>
+                  )}
+                  {team.contact_url && (
+                    <button
+                      onClick={() => handleExternalClick(team.contact_url!)}
+                      className="inline-block px-4 py-2 text-sm font-bold text-[#0064ff] bg-white rounded-xl hover:bg-[#eef1f3] transition-colors cursor-pointer"
+                    >
+                      지원하기
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
@@ -197,8 +239,12 @@ function TeamsTab({ hackathonId }: { hackathonId: string }) {
 
       <CreateTeamModal
         hackathonId={hackathonId}
+        initialData={selectedTeam}
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => {
+          setModalOpen(false);
+          setSelectedTeam(undefined);
+        }}
       />
 
       <ExternalLinkModal
@@ -263,7 +309,7 @@ function LeaderboardTab({ hackathonId }: { hackathonId: string }) {
                 <span
                   className={`text-xl font-extrabold ${entry.total_score ? "text-[#0064ff] cursor-help" : "text-[#9a9d9f]"}`}
                 >
-                  {entry.total_score ? `${entry.total_score}점` : "미제출"}
+                  {entry.total_score ? `${entry.total_score} / 100점` : "미제출"}
                 </span>
 
                 {entry.score_breakdown_json && entry.total_score && (
@@ -682,7 +728,6 @@ export function HackathonDetailPage() {
         {activeTab === "Submit" && (
           <SubmitForm
             hackathonId={hackathon.id}
-            onSuccess={() => setActiveTab("Leaderboard")}
           />
         )}
         {activeTab === "Leaderboard" && (
@@ -697,7 +742,7 @@ export function HackathonDetailPage() {
             setActiveTab("Submit");
             window.scrollTo({ top: 300, behavior: "smooth" });
           }}
-          className="fixed bottom-24 right-8 z-40 shadow-[0_8px_24px_rgba(0,100,255,0.3)] bg-[#0064ff] hover:bg-[#0051d2] text-white font-bold text-sm px-5 py-3 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
+          className="fixed bottom-8 right-28 z-40 shadow-[0_8px_24px_rgba(0,100,255,0.3)] bg-[#0064ff] hover:bg-[#0051d2] text-white font-bold text-sm px-5 py-4 rounded-full transition-all hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-2"
         >
           <svg
             width="16"

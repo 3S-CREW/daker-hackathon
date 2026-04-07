@@ -5,6 +5,7 @@ import {
   fetchHackathons,
   fetchTeams,
   sendDirectMessage,
+  type Hackathon,
   type Team,
 } from "@/shared/api/queries";
 import { supabase } from "@/shared/api/supabase";
@@ -12,7 +13,9 @@ import { useAuthStore } from "@/shared/store/authStore";
 import { ExternalLinkModal } from "@/shared/ui/ExternalLinkModal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useRef, useEffect } from "react";
 
 // ---- DM Modal Component ----
 function DirectMessageModal({
@@ -205,8 +208,117 @@ function Inbox() {
   );
 }
 
+// ---- Hackathon Dropdown Component ----
+function HackathonDropdown({
+  hackathons,
+  value,
+  onChange,
+}: {
+  hackathons: Hackathon[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const availableHackathons = hackathons.filter((h) => h.status !== "ended");
+  const filtered = availableHackathons.filter((h) =>
+    h.title.toLowerCase().includes(search.toLowerCase()),
+  );
+  const selectedHackathon = availableHackathons.find((h) => h.id === value);
+  const displayLabel = selectedHackathon ? selectedHackathon.title : "모든 해커톤";
+
+  return (
+    <div ref={ref} className="relative w-full sm:w-72">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full h-11 px-5 py-2 bg-white border border-slate-200 rounded-full text-sm font-bold text-[#2c2f31] focus:outline-none focus:ring-2 focus:ring-[#0064ff]/20 focus:border-[#0064ff] transition-all flex items-center justify-between cursor-pointer hover:border-slate-300 shadow-sm"
+      >
+        <span className={`truncate mr-2 ${value ? "text-[#0064ff]" : "text-[#595c5e]"}`}>
+          {displayLabel}
+        </span>
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`text-[#9a9d9f] transition-transform duration-200 flex-shrink-0 ${open ? "rotate-180" : ""}`}
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-2 w-full bg-white border border-slate-200 rounded-[2rem] shadow-[0_12px_40px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          {/* 검색 */}
+          <div className="p-4 border-b border-slate-100">
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="해커톤 검색..."
+              className="w-full px-4 py-2.5 text-sm bg-[#f5f7f9] rounded-xl border-none outline-none font-semibold text-[#2c2f31] placeholder:text-[#9a9d9f]"
+            />
+          </div>
+
+          {/* 옵션 목록 */}
+          <div className="max-h-60 overflow-y-auto custom-scrollbar py-2">
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                setSearch("");
+                setOpen(false);
+              }}
+              className={`w-full px-5 py-3 text-left text-sm font-bold transition-colors cursor-pointer ${!value ? "text-[#0064ff] bg-blue-50" : "text-[#595c5e] hover:bg-[#f5f7f9]"}`}
+            >
+              모든 해커톤
+            </button>
+            {filtered.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-[#9a9d9f] text-center font-medium">
+                검색 결과 없음
+              </p>
+            ) : (
+              filtered.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => {
+                    onChange(h.id);
+                    setSearch("");
+                    setOpen(false);
+                  }}
+                  className={`w-full px-5 py-3 text-left text-sm font-bold transition-colors cursor-pointer truncate ${value === h.id ? "text-[#0064ff] bg-blue-50" : "text-[#595c5e] hover:bg-[#f5f7f9]"}`}
+                >
+                  {h.title}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- Main Page ----
 export function CampPage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
@@ -296,57 +408,37 @@ export function CampPage() {
         </p>
       </div>
 
-      {/* 해커톤 별 필터 */}
-      <div className="inline-flex bg-[#eef1f3] rounded-2xl p-1.5 mb-6 w-full sm:w-auto overflow-x-auto custom-scrollbar">
-        <button
-          onClick={() => setSelectedHackathonId(null)}
-          className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap cursor-pointer ${
-            selectedHackathonId === null
-              ? "bg-white text-[#2c2f31] shadow-sm"
-              : "text-[#9a9d9f] hover:text-[#595c5e]"
-          }`}
-        >
-          모든 해커톤
-        </button>
-        {hackathons
-          .filter((h) => h.status !== "ended")
-          .map((h) => (
-            <button
-              key={h.id}
-              onClick={() => setSelectedHackathonId(h.id)}
-              className={`flex-shrink-0 px-5 py-2.5 font-bold rounded-xl text-[14px] transition-all whitespace-nowrap cursor-pointer ${
-                selectedHackathonId === h.id
-                  ? "bg-white text-[#2c2f31] shadow-sm"
-                  : "text-[#9a9d9f] hover:text-[#595c5e]"
-              }`}
-            >
-              {h.title.length > 20 ? h.title.slice(0, 20) + "…" : h.title}
-            </button>
-          ))}
-      </div>
+      {/* 상태 필터 및 해커톤 드롭다운 */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-10">
+        <div className="flex gap-4 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+          <button
+            onClick={() => setFilterMode("all")}
+            className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm cursor-pointer ${
+              filterMode === "all"
+                ? "text-white bg-[#2c2f31]"
+                : "text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]"
+            }`}
+          >
+            전체 보기
+          </button>
+          <button
+            onClick={() => setFilterMode("recruiting")}
+            className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold transition-colors text-sm cursor-pointer ${
+              filterMode === "recruiting"
+                ? "text-white bg-[#0064ff] shadow-sm"
+                : "text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]"
+            }`}
+          >
+            모집 중만 보기
+          </button>
+        </div>
 
-      {/* 상태 필터 */}
-      <div className="flex gap-4 mb-10 overflow-x-auto pb-2 custom-scrollbar">
-        <button
-          onClick={() => setFilterMode("all")}
-          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold shadow-sm transition-colors text-sm cursor-pointer ${
-            filterMode === "all"
-              ? "text-white bg-[#2c2f31]"
-              : "text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]"
-          }`}
-        >
-          전체 보기
-        </button>
-        <button
-          onClick={() => setFilterMode("recruiting")}
-          className={`whitespace-nowrap px-6 py-2.5 rounded-full font-bold transition-colors text-sm cursor-pointer ${
-            filterMode === "recruiting"
-              ? "text-white bg-[#0064ff] shadow-sm"
-              : "text-[#595c5e] bg-white border border-slate-200 hover:bg-[#f5f7f9]"
-          }`}
-        >
-          ✅ 모집 중만 보기
-        </button>
+        {/* 해커톤 드롭다운 필터 */}
+        <HackathonDropdown
+          hackathons={hackathons}
+          value={selectedHackathonId}
+          onChange={setSelectedHackathonId}
+        />
       </div>
 
       {isLoading ? (
@@ -380,12 +472,34 @@ export function CampPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTeams.map((team) => {
             const isMyTeam = user?.id && team.created_by === user.id;
+            const targetHack = hackathons.find((h) => h.id === team.hackathon_id);
 
             return (
               <div
                 key={team.id}
                 className="flex flex-col bg-white rounded-[2rem] p-6 border border-slate-100 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,81,210,0.08)] transition-all duration-300 relative shadow-[0_8px_30px_rgba(0,0,0,0.03)]"
               >
+                {targetHack && (
+                  <button
+                    onClick={() => navigate(`/hackathons/${targetHack.slug}`)}
+                    className="flex items-center gap-1.5 mb-3 text-[11px] font-black text-[#0064ff] bg-blue-50/50 w-fit px-2.5 py-1 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer group"
+                  >
+                    <svg
+                      className="w-3 h-3 group-hover:translate-x-0.5 transition-transform"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                      />
+                    </svg>
+                    {targetHack.title}
+                  </button>
+                )}
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-xl font-extrabold text-[#2c2f31] truncate pr-2">
                     {team.name}
@@ -547,10 +661,10 @@ export function CampPage() {
             setEditingTeam(undefined);
             setModalOpen(true);
           }}
-          className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-lg px-8 py-5 rounded-full hover:scale-105 transition-transform active:scale-95 flex items-center gap-3 cursor-pointer"
+          className="shadow-[0_20px_40px_rgba(0,100,255,0.3)] bg-gradient-to-r from-[#0051d2] to-[#7a9dff] text-white font-extrabold text-base px-6 py-4 rounded-full hover:scale-105 transition-transform active:scale-95 flex items-center gap-2.5 cursor-pointer"
         >
           <svg
-            className="w-6 h-6"
+            className="w-5 h-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -558,7 +672,7 @@ export function CampPage() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={3}
+              strokeWidth={3.5}
               d="M12 4v16m8-8H4"
             />
           </svg>
